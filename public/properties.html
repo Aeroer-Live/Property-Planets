@@ -20,8 +20,9 @@
     <div class="card">
       <h2>Property List</h2>
       <div class="filter-bar">
-        <input type="text" id="search" placeholder="Search name, owner, IC, phone…">
-        <select id="location">
+        <label for="search" class="sr-only">Search</label>
+        <input type="text" id="search" name="search" placeholder="Search name, owner, IC, phone…" autocomplete="off" aria-label="Search properties">
+        <select id="location" name="location" aria-label="Filter by location">
           <option value="">All locations</option>
         </select>
         <button type="button" class="btn btn-primary" id="searchBtn">Search</button>
