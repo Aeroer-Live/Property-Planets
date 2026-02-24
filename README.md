@@ -67,10 +67,13 @@ curl -X POST http://localhost:8787/api/auth/setup -H "Content-Type: application/
 - **Theme:** Light/dark mode; preference stored per user
 - **Screens:** Login, Register, Dashboard, Property list/add/edit, Pending approvals, User management (admin)
 
-## Deployment
+## Deployment to Cloudflare
 
-1. Create D1 database: `npm run db:create` (if not done).
-2. Set `database_id` in `wrangler.toml`.
-3. Run `npm run db:migrate` (remote).
-4. Run `npm run deploy`.
-5. Call `POST /api/auth/setup` once to create the first admin (if DB is empty).
+See **[DEPLOY.md](./DEPLOY.md)** for step-by-step instructions:
+
+1. `npx wrangler login` (if needed)
+2. `npx wrangler d1 create property-planets-db` → copy `database_id`
+3. Put `database_id` in `wrangler.toml`
+4. `npm run db:migrate` (remote D1)
+5. `npm run deploy`
+6. Open `https://<your-worker>.workers.dev/setup.html` to create the first admin

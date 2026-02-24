@@ -9,7 +9,7 @@ assets = { directory = "public", binding = "ASSETS" }
 [[d1_databases]]
 binding = "DB"
 database_name = "property-planets-db"
-database_id = "YOUR_D1_DATABASE_ID"
+database_id = "fa0667f2-6c63-405a-a30a-3c7ca52aae8c"
 
 # After first run of: npx wrangler d1 create property-planets-db
 # Replace YOUR_D1_DATABASE_ID above with the returned id.
