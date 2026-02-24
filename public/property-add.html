@@ -28,6 +28,8 @@
         </select>
         <label for="property_owner_name">Property Owner Name</label>
         <input type="text" id="property_owner_name" name="property_owner_name" required>
+        <label for="ic_number">IC Number</label>
+        <input type="text" id="ic_number" name="ic_number" placeholder="e.g. 900101-01-1234">
         <label for="phone_01">Phone Number 01</label>
         <input type="tel" id="phone_01" name="phone_01" required>
         <label for="phone_02">Phone Number 02</label>
@@ -67,6 +69,7 @@
             property_name: form.property_name.value.trim(),
             location: form.location.value,
             property_owner_name: form.property_owner_name.value.trim(),
+            ic_number: form.ic_number.value.trim() || undefined,
             phone_01: form.phone_01.value.trim(),
             phone_02: form.phone_02.value.trim() || undefined,
           }),
