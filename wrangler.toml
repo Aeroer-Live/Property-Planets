@@ -1,0 +1,15 @@
+name = "property-planets"
+main = "worker/index.ts"
+compatibility_date = "2024-12-01"
+
+# Static frontend (HTML/CSS/JS)
+assets = { directory = "public", binding = "ASSETS" }
+
+# D1 database
+[[d1_databases]]
+binding = "DB"
+database_name = "property-planets-db"
+database_id = "YOUR_D1_DATABASE_ID"
+
+# After first run of: npx wrangler d1 create property-planets-db
+# Replace YOUR_D1_DATABASE_ID above with the returned id.

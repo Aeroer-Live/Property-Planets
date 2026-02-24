@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pending Registrations – Property Planets</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <h1><a href="/dashboard.html">Property Planets</a></h1>
+    <nav class="nav-links">
+      <a href="/dashboard.html">Dashboard</a>
+      <a href="/properties.html">Properties</a>
+      <a href="/users.html">Users</a>
+      <button type="button" class="theme-btn" id="themeBtn">Theme</button>
+      <button type="button" class="btn btn-secondary btn-sm" id="logoutBtn">Logout</button>
+    </nav>
+  </header>
+  <main class="container">
+    <div class="card">
+      <h2>Pending Registrations</h2>
+      <p style="color: var(--text-muted);">Approve or reject staff registration requests.</p>
+      <div id="alert"></div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Username</th>
+              <th>Name</th>
+              <th>Phone</th>
+              <th>Email</th>
+              <th>Registered</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <p id="empty" style="display:none; color: var(--text-muted);">No pending registrations.</p>
+    </div>
+  </main>
+  <script type="module">
+    import { api } from '/js/api.js';
+    import { loadUser, requireAuth, requireAdmin, setTheme, applyStoredTheme } from '/js/auth.js';
+    if (!requireAuth()) throw new Error('redirect');
+    await loadUser();
+    if (!requireAdmin()) throw new Error('redirect');
+    applyStoredTheme();
+    document.getElementById('themeBtn').textContent = document.documentElement.getAttribute('data-theme') === 'dark' ? 'Light' : 'Dark';
+    document.getElementById('themeBtn').onclick = async () => {
+      const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      await setTheme(next);
+      document.getElementById('themeBtn').textContent = next === 'dark' ? 'Light' : 'Dark';
+    };
+    document.getElementById('logoutBtn').onclick = () => import('/js/auth.js').then(m => m.logout());
+
+    const tbody = document.getElementById('tbody');
+    const alertEl = document.getElementById('alert');
+    const emptyEl = document.getElementById('empty');
+
+    async function load() {
+      const { users } = await api('/api/users/pending');
+      if (users.length === 0) {
+        tbody.innerHTML = '';
+        emptyEl.style.display = 'block';
+        return;
+      }
+      emptyEl.style.display = 'none';
+      tbody.innerHTML = users.map(u => `
+        <tr>
+          <td>${escapeHtml(u.username)}</td>
+          <td>${escapeHtml(u.first_name + ' ' + u.last_name)}</td>
+          <td>${escapeHtml(u.phone)}</td>
+          <td>${escapeHtml(u.email)}</td>
+          <td>${escapeHtml(u.created_at)}</td>
+          <td>
+            <button type="button" class="btn btn-primary btn-sm" data-id="${u.id}" data-action="approve">Approve</button>
+            <button type="button" class="btn btn-danger btn-sm" data-id="${u.id}" data-action="reject">Reject</button>
+          </td>
+        </tr>
+      `).join('');
+      tbody.querySelectorAll('[data-action]').forEach(btn => {
+        btn.onclick = async () => {
+          const action = btn.dataset.action;
+          const id = btn.dataset.id;
+          try {
+            await api(`/api/users/${id}/${action}`, { method: 'POST' });
+            load();
+            alertEl.innerHTML = `<div class="alert alert-success">User ${action}d.</div>`;
+            setTimeout(() => { alertEl.innerHTML = ''; }, 2000);
+          } catch (e) {
+            alertEl.innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+          }
+        };
+      });
+    }
+    function escapeHtml(s) {
+      const div = document.createElement('div');
+      div.textContent = s;
+      return div.innerHTML;
+    }
+    await load();
+  </script>
+</body>
+</html>

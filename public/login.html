@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Login – Property Planets</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <div class="container" style="max-width: 400px; margin-top: 3rem;">
+    <div class="card">
+      <h2>Property Planets</h2>
+      <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Sign in to your account</p>
+      <div id="alert"></div>
+      <form id="loginForm">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" required autocomplete="username">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required autocomplete="current-password">
+        <button type="submit" class="btn btn-primary">Sign in</button>
+      </form>
+      <p style="margin-top: 1rem;">
+        <a href="/register.html">Register as staff</a><br>
+        <a href="/setup.html" style="font-size: 0.9rem; color: var(--text-muted);">First-time setup (create admin)</a>
+      </p>
+    </div>
+  </div>
+  <script type="module">
+    import { loadUser } from '/js/auth.js';
+    const user = await loadUser();
+    if (user && user.status === 'Active') {
+      window.location.href = '/dashboard.html';
+      throw new Error('redirect');
+    }
+
+    const form = document.getElementById('loginForm');
+    const alertEl = document.getElementById('alert');
+    function showError(msg) {
+      alertEl.innerHTML = `<div class="alert alert-error">${msg}</div>`;
+    }
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      alertEl.innerHTML = '';
+      const username = form.username.value.trim();
+      const password = form.password.value;
+      try {
+        const { login } = await import('/js/auth.js');
+        await login(username, password);
+        window.location.href = '/dashboard.html';
+      } catch (err) {
+        showError(err.message || 'Login failed');
+      }
+    });
+  </script>
+</body>
+</html>

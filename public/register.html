@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Staff Registration – Property Planets</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <div class="container" style="max-width: 480px; margin-top: 2rem;">
+    <div class="card">
+      <h2>Staff Registration</h2>
+      <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Register for a staff account. An admin must approve your request.</p>
+      <div id="alert"></div>
+      <form id="regForm">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" required autocomplete="username">
+        <label for="first_name">First Name</label>
+        <input type="text" id="first_name" name="first_name" required>
+        <label for="last_name">Last Name</label>
+        <input type="text" id="last_name" name="last_name" required>
+        <label for="phone">Phone Number</label>
+        <input type="tel" id="phone" name="phone" required>
+        <label for="email">Email Address</label>
+        <input type="email" id="email" name="email" required autocomplete="email">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required minlength="8" autocomplete="new-password">
+        <label for="confirm_password">Confirm Password</label>
+        <input type="password" id="confirm_password" name="confirm_password" required autocomplete="new-password">
+        <button type="submit" class="btn btn-primary">Submit Registration</button>
+      </form>
+      <p style="margin-top: 1rem;">
+        <a href="/login.html">Back to login</a>
+      </p>
+    </div>
+  </div>
+  <script type="module">
+    const form = document.getElementById('regForm');
+    const alertEl = document.getElementById('alert');
+    function showError(msg) {
+      alertEl.innerHTML = `<div class="alert alert-error">${msg}</div>`;
+    }
+    function showSuccess(msg) {
+      alertEl.innerHTML = `<div class="alert alert-success">${msg}</div>`;
+    }
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (form.password.value !== form.confirm_password.value) {
+        showError('Password and confirmation do not match');
+        return;
+      }
+      alertEl.innerHTML = '';
+      try {
+        const { register } = await import('/js/auth.js');
+        await register({
+          username: form.username.value.trim(),
+          first_name: form.first_name.value.trim(),
+          last_name: form.last_name.value.trim(),
+          phone: form.phone.value.trim(),
+          email: form.email.value.trim(),
+          password: form.password.value,
+          confirm_password: form.confirm_password.value,
+        });
+        showSuccess('Registration submitted. Please wait for admin approval.');
+        form.reset();
+      } catch (err) {
+        showError(err.message || 'Registration failed');
+      }
+    });
+  </script>
+</body>
+</html>

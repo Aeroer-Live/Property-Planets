@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Property Planets</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <script type="module">
+    import { loadUser } from '/js/auth.js';
+    const user = await loadUser();
+    if (user && user.status === 'Active') window.location.href = '/dashboard.html';
+    else window.location.href = '/login.html';
+  </script>
+  <p>Loading…</p>
+</body>
+</html>

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Edit Property – Property Planets</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <h1><a href="/dashboard.html">Property Planets</a></h1>
+    <nav class="nav-links">
+      <a href="/properties.html">Properties</a>
+      <button type="button" class="theme-btn" id="themeBtn">Theme</button>
+      <button type="button" class="btn btn-secondary btn-sm" id="logoutBtn">Logout</button>
+    </nav>
+  </header>
+  <main class="container">
+    <div class="card">
+      <h2>Property Details</h2>
+      <div id="alert"></div>
+      <form id="form" style="display:none;">
+        <label for="property_name">Property Name</label>
+        <input type="text" id="property_name" name="property_name" required>
+        <label for="location">Location (State)</label>
+        <select id="location" name="location" required>
+          <option value="">Select state</option>
+        </select>
+        <label for="property_owner_name">Property Owner Name</label>
+        <input type="text" id="property_owner_name" name="property_owner_name" required>
+        <label for="phone_01">Phone Number 01</label>
+        <input type="tel" id="phone_01" name="phone_01" required>
+        <label for="phone_02">Phone Number 02</label>
+        <input type="tel" id="phone_02" name="phone_02">
+        <p style="color: var(--text-muted); font-size: 0.9rem;">Created by: <span id="createdBy"></span> · Updated: <span id="updatedAt"></span></p>
+        <button type="submit" class="btn btn-primary" id="saveBtn">Save changes</button>
+        <button type="button" class="btn btn-danger" id="deleteBtn">Delete</button>
+        <a href="/properties.html" class="btn btn-secondary">Back to list</a>
+      </form>
+      <p id="loading">Loading…</p>
+    </div>
+  </main>
+  <script type="module">
+    import { api } from '/js/api.js';
+    import { loadUser, requireAuth, setTheme, applyStoredTheme } from '/js/auth.js';
+    if (!requireAuth()) throw new Error('redirect');
+    await loadUser();
+    applyStoredTheme();
+    document.getElementById('themeBtn').textContent = document.documentElement.getAttribute('data-theme') === 'dark' ? 'Light' : 'Dark';
+    document.getElementById('themeBtn').onclick = async () => {
+      const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      await setTheme(next);
+      document.getElementById('themeBtn').textContent = next === 'dark' ? 'Light' : 'Dark';
+    };
+    document.getElementById('logoutBtn').onclick = () => import('/js/auth.js').then(m => m.logout());
+
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id');
+    if (!id) { window.location.href = '/properties.html'; throw new Error('redirect'); }
+
+    const MALAYSIA_STATES = ['Johor', 'Kedah', 'Kelantan', 'Malacca', 'Negeri Sembilan', 'Pahang', 'Penang', 'Perak', 'Perlis', 'Sabah', 'Sarawak', 'Selangor', 'Terengganu', 'Kuala Lumpur', 'Labuan', 'Putrajaya'];
+    const form = document.getElementById('form');
+    const alertEl = document.getElementById('alert');
+    const locationSelect = document.getElementById('location');
+    let isAdmin = false;
+    try {
+      const me = await api('/api/users/me');
+      isAdmin = me.role === 'Admin';
+    } catch (_) {}
+
+    const prop = await api(`/api/properties/${id}`);
+    document.getElementById('loading').style.display = 'none';
+    form.style.display = 'block';
+    locationSelect.innerHTML = MALAYSIA_STATES.map(s => `<option value="${s}" ${s === prop.location ? 'selected' : ''}>${s}</option>`).join('');
+    form.property_name.value = prop.property_name;
+    form.property_owner_name.value = prop.property_owner_name;
+    form.phone_01.value = prop.phone_01;
+    form.phone_02.value = prop.phone_02 || '';
+    document.getElementById('createdBy').textContent = prop.created_by_username || prop.created_by;
+    document.getElementById('updatedAt').textContent = prop.updated_at || prop.created_at || '—';
+    if (!isAdmin) {
+      form.querySelectorAll('input, select').forEach(el => el.disabled = true);
+      document.getElementById('saveBtn').style.display = 'none';
+      document.getElementById('deleteBtn').style.display = 'none';
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!isAdmin) return;
+      alertEl.innerHTML = '';
+      try {
+        await api(`/api/properties/${id}`, {
+          method: 'PUT',
+          body: JSON.stringify({
+            property_name: form.property_name.value.trim(),
+            location: form.location.value,
+            property_owner_name: form.property_owner_name.value.trim(),
+            phone_01: form.phone_01.value.trim(),
+            phone_02: form.phone_02.value.trim() || undefined,
+          }),
+        });
+        alertEl.innerHTML = '<div class="alert alert-success">Saved.</div>';
+      } catch (err) {
+        alertEl.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+      }
+    });
+    document.getElementById('deleteBtn').onclick = async () => {
+      if (!isAdmin || !confirm('Delete this property?')) return;
+      try {
+        await api(`/api/properties/${id}`, { method: 'DELETE' });
+        window.location.href = '/properties.html';
+      } catch (err) {
+        alertEl.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+      }
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Add Property – Property Planets</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <h1><a href="/dashboard.html">Property Planets</a></h1>
+    <nav class="nav-links">
+      <a href="/properties.html">Properties</a>
+      <button type="button" class="theme-btn" id="themeBtn">Theme</button>
+      <button type="button" class="btn btn-secondary btn-sm" id="logoutBtn">Logout</button>
+    </nav>
+  </header>
+  <main class="container">
+    <div class="card">
+      <h2>Add Property</h2>
+      <div id="alert"></div>
+      <form id="form">
+        <label for="property_name">Property Name</label>
+        <input type="text" id="property_name" name="property_name" required>
+        <label for="location">Location (State)</label>
+        <select id="location" name="location" required>
+          <option value="">Select state</option>
+        </select>
+        <label for="property_owner_name">Property Owner Name</label>
+        <input type="text" id="property_owner_name" name="property_owner_name" required>
+        <label for="phone_01">Phone Number 01</label>
+        <input type="tel" id="phone_01" name="phone_01" required>
+        <label for="phone_02">Phone Number 02</label>
+        <input type="tel" id="phone_02" name="phone_02">
+        <button type="submit" class="btn btn-primary">Add Property</button>
+        <a href="/properties.html" class="btn btn-secondary">Cancel</a>
+      </form>
+    </div>
+  </main>
+  <script type="module">
+    import { api } from '/js/api.js';
+    import { loadUser, requireAuth, setTheme, applyStoredTheme } from '/js/auth.js';
+    if (!requireAuth()) throw new Error('redirect');
+    await loadUser();
+    applyStoredTheme();
+    document.getElementById('themeBtn').textContent = document.documentElement.getAttribute('data-theme') === 'dark' ? 'Light' : 'Dark';
+    document.getElementById('themeBtn').onclick = async () => {
+      const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      await setTheme(next);
+      document.getElementById('themeBtn').textContent = next === 'dark' ? 'Light' : 'Dark';
+    };
+    document.getElementById('logoutBtn').onclick = () => import('/js/auth.js').then(m => m.logout());
+
+    const MALAYSIA_STATES = ['Johor', 'Kedah', 'Kelantan', 'Malacca', 'Negeri Sembilan', 'Pahang', 'Penang', 'Perak', 'Perlis', 'Sabah', 'Sarawak', 'Selangor', 'Terengganu', 'Kuala Lumpur', 'Labuan', 'Putrajaya'];
+    const locationSelect = document.getElementById('location');
+    locationSelect.innerHTML = '<option value="">Select state</option>' + MALAYSIA_STATES.map(s => `<option value="${s}">${s}</option>`).join('');
+
+    const form = document.getElementById('form');
+    const alertEl = document.getElementById('alert');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      alertEl.innerHTML = '';
+      try {
+        await api('/api/properties', {
+          method: 'POST',
+          body: JSON.stringify({
+            property_name: form.property_name.value.trim(),
+            location: form.location.value,
+            property_owner_name: form.property_owner_name.value.trim(),
+            phone_01: form.phone_01.value.trim(),
+            phone_02: form.phone_02.value.trim() || undefined,
+          }),
+        });
+        window.location.href = '/properties.html';
+      } catch (err) {
+        alertEl.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+      }
+    });
+  </script>
+</body>
+</html>

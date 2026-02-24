@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Properties – Property Planets</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <h1><a href="/dashboard.html">Property Planets</a></h1>
+    <nav class="nav-links">
+      <a href="/dashboard.html">Dashboard</a>
+      <a href="/property-add.html">Add Property</a>
+      <button type="button" class="theme-btn" id="themeBtn">Theme</button>
+      <button type="button" class="btn btn-secondary btn-sm" id="logoutBtn">Logout</button>
+    </nav>
+  </header>
+  <main class="container">
+    <div class="card">
+      <h2>Property List</h2>
+      <div class="filter-bar">
+        <input type="text" id="search" placeholder="Search name, owner, phone…">
+        <select id="location">
+          <option value="">All locations</option>
+        </select>
+        <button type="button" class="btn btn-primary" id="searchBtn">Search</button>
+      </div>
+      <div id="alert"></div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Location</th>
+              <th>Owner</th>
+              <th>Phone 01</th>
+              <th>Phone 02</th>
+              <th>Created by</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <div class="pagination" id="pagination"></div>
+    </div>
+  </main>
+  <script type="module">
+    import { api } from '/js/api.js';
+    import { loadUser, requireAuth, setTheme, applyStoredTheme } from '/js/auth.js';
+    if (!requireAuth()) throw new Error('redirect');
+    await loadUser();
+    applyStoredTheme();
+    document.getElementById('themeBtn').textContent = document.documentElement.getAttribute('data-theme') === 'dark' ? 'Light' : 'Dark';
+    document.getElementById('themeBtn').onclick = async () => {
+      const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      await setTheme(next);
+      document.getElementById('themeBtn').textContent = next === 'dark' ? 'Light' : 'Dark';
+    };
+    document.getElementById('logoutBtn').onclick = () => import('/js/auth.js').then(m => m.logout());
+
+    const tbody = document.getElementById('tbody');
+    const paginationEl = document.getElementById('pagination');
+    const alertEl = document.getElementById('alert');
+    const searchInput = document.getElementById('search');
+    const locationSelect = document.getElementById('location');
+    let isAdmin = false;
+    try {
+      const me = await api('/api/users/me');
+      isAdmin = me.role === 'Admin';
+    } catch (_) {}
+
+    async function loadLocations() {
+      const { locations } = await api('/api/properties/locations');
+      locationSelect.innerHTML = '<option value="">All locations</option>' + locations.map(l => `<option value="${l}">${l}</option>`).join('');
+    }
+
+    async function loadPage(page = 1) {
+      const search = searchInput.value.trim();
+      const location = locationSelect.value;
+      const params = new URLSearchParams({ page: String(page) });
+      if (search) params.set('search', search);
+      if (location) params.set('location', location);
+      const data = await api(`/api/properties?${params}`);
+      tbody.innerHTML = data.properties.map(p => `
+        <tr>
+          <td>${escapeHtml(p.property_name)}</td>
+          <td>${escapeHtml(p.location)}</td>
+          <td>${escapeHtml(p.property_owner_name)}</td>
+          <td>${escapeHtml(p.phone_01)}</td>
+          <td>${escapeHtml(p.phone_02 || '')}</td>
+          <td>${escapeHtml(p.created_by_username || '')}</td>
+          <td>
+            <a href="/property-edit.html?id=${p.id}" class="btn btn-secondary btn-sm">View</a>
+            ${isAdmin ? `<button type="button" class="btn btn-danger btn-sm" data-id="${p.id}" data-delete>Delete</button>` : ''}
+          </td>
+        </tr>
+      `).join('');
+      paginationEl.innerHTML = '';
+      const { page: p, total_pages, total } = data.pagination;
+      if (total_pages > 1) {
+        paginationEl.appendChild(createBtn('Previous', p > 1, () => loadPage(p - 1)));
+        paginationEl.appendChild(document.createTextNode(` Page ${p} of ${total_pages} (${total} total) `));
+        paginationEl.appendChild(createBtn('Next', p < total_pages, () => loadPage(p + 1)));
+      }
+      paginationEl.querySelectorAll('[data-delete]').forEach(btn => {
+        btn.onclick = async () => {
+          if (!confirm('Delete this property?')) return;
+          try {
+            await api(`/api/properties/${btn.dataset.id}`, { method: 'DELETE' });
+            loadPage(p);
+          } catch (e) {
+            alertEl.innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+          }
+        };
+      });
+    }
+    function createBtn(text, enabled, fn) {
+      const b = document.createElement('button');
+      b.textContent = text;
+      b.disabled = !enabled;
+      b.onclick = fn;
+      return b;
+    }
+    function escapeHtml(s) {
+      const div = document.createElement('div');
+      div.textContent = s;
+      return div.innerHTML;
+    }
+    await loadLocations();
+    await loadPage(1);
+    document.getElementById('searchBtn').onclick = () => loadPage(1);
+    searchInput.onkeydown = (e) => e.key === 'Enter' && loadPage(1);
+  </script>
+</body>
+</html>

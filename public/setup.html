@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>First-time Setup – Property Planets</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <div class="container" style="max-width: 400px; margin-top: 3rem;">
+    <div class="card">
+      <h2>First-time Setup</h2>
+      <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Create the first admin account. This page only works when no users exist.</p>
+      <div id="alert"></div>
+      <form id="setupForm">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" required autocomplete="username">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" required autocomplete="email">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required minlength="8" autocomplete="new-password">
+        <button type="submit" class="btn btn-primary">Create admin</button>
+      </form>
+      <p id="done" style="display:none;"><a href="/login.html">Go to login</a></p>
+    </div>
+  </div>
+  <script type="module">
+    const form = document.getElementById('setupForm');
+    const alertEl = document.getElementById('alert');
+    const doneEl = document.getElementById('done');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      alertEl.innerHTML = '';
+      try {
+        const res = await fetch('/api/auth/setup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: form.username.value.trim(),
+            email: form.email.value.trim(),
+            password: form.password.value,
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          alertEl.innerHTML = `<div class="alert alert-error">${data.error || res.statusText}</div>`;
+          return;
+        }
+        alertEl.innerHTML = '<div class="alert alert-success">Admin created. You can now log in.</div>';
+        form.style.display = 'none';
+        doneEl.style.display = 'block';
+      } catch (err) {
+        alertEl.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+      }
+    });
+  </script>
+</body>
+</html>

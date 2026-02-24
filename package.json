@@ -1,0 +1,20 @@
+{
+  "name": "property-planets",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:create": "wrangler d1 create property-planets-db",
+    "db:migrate": "wrangler d1 migrations apply property-planets-db",
+    "db:migrate:local": "wrangler d1 migrations apply property-planets-db --local",
+    "db:studio": "wrangler d1 execute property-planets-db --local"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241127.0",
+    "wrangler": "^3.90.0"
+  },
+  "dependencies": {
+    "hono": "^4.6.0"
+  }
+}

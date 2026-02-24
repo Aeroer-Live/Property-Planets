@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard – Property Planets</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <h1>Property Planets</h1>
+    <nav class="nav-links">
+      <span id="userName"></span>
+      <a href="/properties.html">Properties</a>
+      <a href="/property-add.html">Add Property</a>
+      <span id="adminLinks"></span>
+      <button type="button" class="theme-btn" id="themeBtn" aria-label="Toggle theme">Theme</button>
+      <button type="button" class="btn btn-secondary btn-sm" id="logoutBtn">Logout</button>
+    </nav>
+  </header>
+  <main class="container">
+    <div class="card">
+      <h2>Dashboard</h2>
+      <p>Welcome to the Property Rent Database. Use the navigation to view properties, add new records, or manage users (admin).</p>
+      <p id="pendingNotice" style="display:none; color: var(--text-muted);">
+        Your account is pending approval. You will get access once an admin approves your registration.
+      </p>
+    </div>
+  </main>
+  <script type="module">
+    import { loadUser, getCurrentUser, logout, setTheme, applyStoredTheme, requireAuth } from '/js/auth.js';
+    if (!requireAuth()) throw new Error('redirect');
+    const user = await loadUser();
+    if (!user) throw new Error('redirect');
+    if (user.status !== 'Active') {
+      document.getElementById('pendingNotice').style.display = 'block';
+      document.querySelector('a[href="/properties.html"]').style.display = 'none';
+      document.querySelector('a[href="/property-add.html"]').style.display = 'none';
+    }
+    document.getElementById('userName').textContent = user.username;
+    if (user.role === 'Admin') {
+      document.getElementById('adminLinks').innerHTML = '<a href="/pending.html">Pending</a> <a href="/users.html">Users</a>';
+    }
+    applyStoredTheme();
+    document.getElementById('themeBtn').textContent = (document.documentElement.getAttribute('data-theme') || 'light') === 'dark' ? 'Light' : 'Dark';
+    document.getElementById('themeBtn').onclick = async () => {
+      const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      await setTheme(next);
+      document.getElementById('themeBtn').textContent = next === 'dark' ? 'Light' : 'Dark';
+    };
+    document.getElementById('logoutBtn').onclick = () => logout();
+  </script>
+</body>
+</html>
