@@ -18,6 +18,8 @@
       <a href="/property-add.html">Add Property</a>
     </nav>
     <div class="header-actions">
+      <span class="header-user" id="userName"></span>
+      <span class="header-actions-divider" aria-hidden="true"></span>
       <div class="header-actions-tools">
         <button type="button" class="theme-btn" id="themeBtn" aria-label="Toggle theme"></button>
         <button type="button" class="logout-btn logout-btn--emphasis" id="logoutBtn">Logout</button>
@@ -53,9 +55,11 @@
   </main>
   <script type="module">
     import { api } from '/js/api.js';
-    import { loadUser, requireAuth, setTheme, applyStoredTheme } from '/js/auth.js';
+    import { loadUser, getCurrentUser, requireAuth, setTheme, applyStoredTheme } from '/js/auth.js';
     if (!requireAuth()) throw new Error('redirect');
     await loadUser();
+    const user = getCurrentUser();
+    if (user) document.getElementById('userName').textContent = user.username;
     applyStoredTheme();
     document.getElementById('themeBtn').textContent = document.documentElement.getAttribute('data-theme') === 'dark' ? 'Light' : 'Dark';
     document.getElementById('themeBtn').onclick = async () => {
