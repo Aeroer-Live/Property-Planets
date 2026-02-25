@@ -8,14 +8,20 @@
 </head>
 <body>
   <header class="app-header">
-    <h1><a href="/dashboard.html">Property Planets</a></h1>
-    <nav class="nav-links">
+    <a href="/dashboard.html" class="header-brand">
+      <span class="header-brand-icon">P</span>
+      Property Planets
+    </a>
+    <nav class="header-nav">
       <a href="/dashboard.html">Dashboard</a>
       <a href="/pending.html">Pending</a>
+      <a href="/users.html" class="active">Users</a>
       <a href="/properties.html">Properties</a>
-      <button type="button" class="theme-btn" id="themeBtn">Theme</button>
-      <button type="button" class="btn btn-secondary btn-sm" id="logoutBtn">Logout</button>
     </nav>
+    <div class="header-actions">
+      <button type="button" class="theme-btn" id="themeBtn" aria-label="Toggle theme"></button>
+      <button type="button" class="btn btn-secondary btn-sm" id="logoutBtn">Logout</button>
+    </div>
   </header>
   <main class="container">
     <div class="card">
@@ -93,5 +99,25 @@
       return div.innerHTML;
     }
   </script>
+  <footer class="app-footer">
+    <div class="footer-inner">
+      <div class="footer-brand">Property <span>Planets</span></div>
+      <div class="footer-links">
+        <strong style="color: var(--text); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">App</strong>
+        <a href="/dashboard.html">Dashboard</a>
+        <a href="/properties.html">Properties</a>
+        <a href="/pending.html">Pending</a>
+        <a href="/users.html">Users</a>
+      </div>
+      <div class="footer-links">
+        <strong style="color: var(--text); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Account</strong>
+        <a href="/login.html">Login</a>
+        <a href="/register.html">Register</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span class="footer-copyright">© 2025 Property Planets. Property Rent Database.</span>
+    </div>
+  </footer>
 </body>
 </html>
