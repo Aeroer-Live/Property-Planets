@@ -181,64 +181,109 @@ body {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 0.5rem;
+  gap: 0;
   justify-self: end;
+  min-height: 40px;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  padding: 0 0.35rem 0 0.6rem;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+
+[data-theme="dark"] .header-actions {
+  box-shadow: 0 1px 2px rgba(0,0,0,0.2);
 }
 
 .header-actions-divider {
   width: 1px;
-  height: 24px;
+  height: 20px;
   background: var(--border);
   flex-shrink: 0;
+  margin: 0 0.5rem;
 }
 
 .header-user {
-  padding: 0.4rem 0.875rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.5rem 0.35rem 0.4rem;
   border-radius: 9999px;
-  background: var(--accent-muted);
+  background: transparent;
   color: var(--accent);
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 600;
-  border: 1px solid transparent;
-  transition: background 0.2s, border-color 0.2s;
+  letter-spacing: 0.02em;
 }
 
-.header-user:hover {
-  background: rgba(14, 165, 233, 0.18);
+.header-user::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--success);
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2px var(--success-muted);
 }
 
-[data-theme="dark"] .header-user:hover {
-  background: rgba(56, 189, 248, 0.25);
+.header-actions-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
 }
 
 .theme-btn {
-  width: 42px;
-  height: 42px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--input-bg);
-  color: var(--text);
+  width: 36px;
+  height: 36px;
+  border-radius: 9999px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
   cursor: pointer;
-  font-size: 1.125rem;
+  font-size: 1rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.2s, border-color 0.2s, transform 0.1s;
+  transition: color 0.2s, background 0.2s, transform 0.1s;
 }
 
 .theme-btn:hover {
   background: var(--border);
-  border-color: var(--text-muted);
+  color: var(--text);
 }
 
 .theme-btn:active {
-  transform: scale(0.95);
+  transform: scale(0.94);
 }
 
-.header-actions .btn {
-  padding: 0.5rem 1.125rem;
-  font-size: 0.875rem;
+.header-actions .btn,
+.header-actions .logout-btn {
+  height: 36px;
+  padding: 0 1rem;
+  border-radius: 9999px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.8125rem;
   font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s, background 0.2s;
+  font-family: inherit;
+}
+
+.header-actions .btn:hover,
+.header-actions .logout-btn:hover {
+  background: var(--border);
+  color: var(--text);
+}
+
+.header-actions .btn.logout-btn--emphasis:hover {
+  background: rgba(220, 38, 38, 0.12);
+  color: var(--danger);
 }
 
 /* Minimal header (auth pages) */
@@ -787,7 +832,11 @@ tr:hover td {
   .header-brand-icon { width: 34px; height: 34px; font-size: 1rem; }
   .header-nav a { padding: 0.45rem 0.65rem; font-size: 0.875rem; }
   .header-nav a.active::after { left: 0.5rem; right: 0.5rem; bottom: 0.3rem; }
-  .theme-btn { width: 38px; height: 38px; }
+  .header-actions { padding: 0 0.25rem 0 0.5rem; min-height: 36px; }
+  .header-user { font-size: 0.75rem; }
+  .header-user::before { width: 5px; height: 5px; }
+  .theme-btn { width: 34px; height: 34px; }
+  .header-actions .logout-btn { padding: 0 0.75rem; font-size: 0.75rem; height: 34px; }
   .footer-inner { padding: 0; }
   th, td { padding: 0.6rem 0.75rem; font-size: 0.875rem; }
 }
