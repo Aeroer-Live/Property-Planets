@@ -24,10 +24,17 @@
       </div>
     </div>
   </header>
-  <main class="container">
+  <main class="container container--wide">
     <div class="card card--accent">
-      <span class="section-label">Database</span>
-      <h2 class="section-title">Property List</h2>
+      <div class="properties-toolbar">
+        <div>
+          <span class="section-label">Database</span>
+          <h2 class="section-title">Property List</h2>
+        </div>
+        <div class="properties-toolbar-actions">
+          <a href="/property-add.html">+ Add Property</a>
+        </div>
+      </div>
       <div class="filter-bar">
         <label for="search" class="sr-only">Search</label>
         <input type="text" id="search" name="search" placeholder="Search name, owner, IC, phone…" autocomplete="off" aria-label="Search properties">
@@ -37,7 +44,13 @@
         <button type="button" class="btn btn-primary" id="searchBtn">Search</button>
       </div>
       <div id="alert"></div>
-      <div class="table-wrap">
+      <div id="emptyState" class="empty-state" style="display: none;">
+        <div class="empty-state-icon">📋</div>
+        <h3>No properties yet</h3>
+        <p>Add your first property to get started.</p>
+        <a href="/property-add.html" class="btn btn-primary">Add Property</a>
+      </div>
+      <div class="properties-table-wrap" id="tableWrap">
         <table>
           <thead>
             <tr>
@@ -48,7 +61,7 @@
               <th>Phone 01</th>
               <th>Phone 02</th>
               <th>Created by</th>
-              <th></th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody id="tbody"></tbody>
@@ -94,27 +107,44 @@
       if (search) params.set('search', search);
       if (location) params.set('location', location);
       const data = await api(`/api/properties?${params}`);
+      const hasResults = data.properties.length > 0;
+      document.getElementById('emptyState').style.display = hasResults ? 'none' : 'block';
+      document.getElementById('tableWrap').style.display = hasResults ? 'block' : 'none';
+      paginationEl.style.display = hasResults ? 'flex' : 'none';
+
       tbody.innerHTML = data.properties.map(p => `
         <tr>
-          <td>${escapeHtml(p.property_name)}</td>
-          <td>${escapeHtml(p.location)}</td>
+          <td><strong>${escapeHtml(p.property_name)}</strong></td>
+          <td><span class="table-location">${escapeHtml(p.location)}</span></td>
           <td>${escapeHtml(p.property_owner_name)}</td>
-          <td>${escapeHtml(p.ic_number || '')}</td>
+          <td>${escapeHtml(p.ic_number || '—')}</td>
           <td>${escapeHtml(p.phone_01)}</td>
-          <td>${escapeHtml(p.phone_02 || '')}</td>
-          <td>${escapeHtml(p.created_by_username || '')}</td>
+          <td>${escapeHtml(p.phone_02 || '—')}</td>
+          <td>${escapeHtml(p.created_by_username || '—')}</td>
           <td>
-            <a href="/property-edit.html?id=${p.id}" class="btn btn-secondary btn-sm">View</a>
-            ${isAdmin ? `<button type="button" class="btn btn-danger btn-sm" data-id="${p.id}" data-delete>Delete</button>` : ''}
+            <div class="table-actions">
+              <a href="/property-edit.html?id=${p.id}" class="btn btn-secondary btn-sm">View</a>
+              ${isAdmin ? `<button type="button" class="btn btn-danger btn-sm" data-id="${p.id}" data-delete>Delete</button>` : ''}
+            </div>
           </td>
         </tr>
       `).join('');
       paginationEl.innerHTML = '';
       const { page: p, total_pages, total } = data.pagination;
-      if (total_pages > 1) {
-        paginationEl.appendChild(createBtn('Previous', p > 1, () => loadPage(p - 1)));
-        paginationEl.appendChild(document.createTextNode(` Page ${p} of ${total_pages} (${total} total) `));
-        paginationEl.appendChild(createBtn('Next', p < total_pages, () => loadPage(p + 1)));
+      if (hasResults) {
+        if (total_pages > 1) {
+          const info = document.createElement('span');
+          info.className = 'pagination-info';
+          info.textContent = `${total} total · Page ${p} of ${total_pages}`;
+          paginationEl.appendChild(createBtn('Previous', p > 1, () => loadPage(p - 1)));
+          paginationEl.appendChild(info);
+          paginationEl.appendChild(createBtn('Next', p < total_pages, () => loadPage(p + 1)));
+        } else {
+          const info = document.createElement('span');
+          info.className = 'pagination-info';
+          info.textContent = `${total} propert${total === 1 ? 'y' : 'ies'}`;
+          paginationEl.appendChild(info);
+        }
       }
       paginationEl.querySelectorAll('[data-delete]').forEach(btn => {
         btn.onclick = async () => {

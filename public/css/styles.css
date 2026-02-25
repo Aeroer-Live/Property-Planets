@@ -320,6 +320,11 @@ main {
   width: 100%;
 }
 
+/* Wider layout for list/database pages (e.g. Properties) */
+.container--wide {
+  max-width: 1600px;
+}
+
 /* ========== Hero / Section (ProductivityTask-style) ========== */
 .page-hero {
   margin-bottom: 2rem;
@@ -934,33 +939,233 @@ tr:hover td {
   font-size: 0.875rem;
 }
 
-/* ========== Filter bar ========== */
+/* Properties page: toolbar + filter + table */
+.properties-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.properties-toolbar .section-label {
+  margin-bottom: 0;
+}
+
+.properties-toolbar .section-title {
+  margin-bottom: 0;
+}
+
+.properties-toolbar-actions a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: #fff;
+  font-weight: 500;
+  font-size: 0.9375rem;
+  text-decoration: none;
+  transition: background 0.2s;
+}
+
+.properties-toolbar-actions a:hover {
+  background: var(--accent-hover);
+  color: #fff;
+}
+
+/* Filter bar (enhanced) */
 .filter-bar {
   display: flex;
   gap: 0.75rem;
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
   flex-wrap: wrap;
   position: relative;
   z-index: 1;
+  padding: 1rem;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
 }
 
-.filter-bar input,
-.filter-bar select {
-  padding: 0.5rem 0.875rem;
+.filter-bar input {
+  flex: 1;
+  min-width: 180px;
+  padding: 0.6rem 1rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--input-bg);
   color: var(--text);
-  min-width: 160px;
-  pointer-events: auto;
-  user-select: text;
   font-family: inherit;
+  font-size: 0.9375rem;
+}
+
+.filter-bar select {
+  min-width: 160px;
+  padding: 0.6rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--input-bg);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.9375rem;
+}
+
+.filter-bar .btn-primary {
+  padding: 0.6rem 1.25rem;
+  white-space: nowrap;
 }
 
 .filter-bar input:focus {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-muted);
+}
+
+/* Table (properties list) */
+.properties-table-wrap {
+  overflow-x: auto;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+}
+
+.properties-table-wrap table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.properties-table-wrap th,
+.properties-table-wrap td {
+  padding: 0.875rem 1.125rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.9375rem;
+}
+
+.properties-table-wrap th {
+  font-weight: 600;
+  color: var(--text-muted);
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: var(--bg);
+  white-space: nowrap;
+}
+
+.properties-table-wrap tbody tr {
+  transition: background 0.15s;
+}
+
+.properties-table-wrap tbody tr:hover td {
+  background: var(--bg);
+}
+
+.properties-table-wrap tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.table-location {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  background: var(--accent-muted);
+  color: var(--accent);
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.table-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: nowrap;
+}
+
+.table-actions .btn,
+.table-actions a.btn {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  min-height: 32px;
+  border-radius: 6px;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* View = primary action (accent outline) */
+.table-actions .btn-action-view,
+.table-actions a.btn-secondary.btn-sm {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+.table-actions .btn-action-view:hover,
+.table-actions a.btn-secondary.btn-sm:hover {
+  background: var(--accent-muted);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* Delete = destructive, subtle so it doesn't overpower */
+.table-actions .btn-danger.btn-sm {
+  background: rgba(220, 38, 38, 0.12);
+  color: var(--danger);
+  border: 1px solid rgba(220, 38, 38, 0.35);
+}
+
+.table-actions .btn-danger.btn-sm:hover {
+  background: var(--danger);
+  color: #fff;
+  border-color: var(--danger);
+}
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 3rem 2rem;
+  background: var(--bg);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+}
+
+.empty-state-icon {
+  font-size: 2.5rem;
+  margin-bottom: 0.75rem;
+  opacity: 0.6;
+}
+
+.empty-state h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0 0 0.35rem;
+  color: var(--text);
+}
+
+.empty-state p {
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+  margin: 0 0 1.25rem;
+}
+
+.empty-state .btn {
+  padding: 0.5rem 1.25rem;
+}
+
+/* Pagination (enhanced for properties) */
+.pagination-info {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  margin-right: 0.5rem;
+}
+
+.pagination .pagination-current {
+  font-weight: 600;
+  color: var(--accent);
 }
 
 .sr-only {
@@ -1008,4 +1213,10 @@ tr:hover td {
   .header-actions .logout-btn { padding: 0 0.75rem; font-size: 0.75rem; height: 34px; }
   .footer-inner { padding: 0; }
   th, td { padding: 0.6rem 0.75rem; font-size: 0.875rem; }
+  .properties-toolbar { flex-direction: column; align-items: flex-start; }
+  .filter-bar { padding: 0.75rem; }
+  .filter-bar input { min-width: 100%; }
+  .properties-table-wrap th,
+  .properties-table-wrap td { padding: 0.6rem 0.75rem; font-size: 0.875rem; }
+  .table-location { font-size: 0.75rem; padding: 0.15rem 0.4rem; }
 }
