@@ -390,7 +390,7 @@ main {
 }
 
 .card--accent {
-  border-left: 4px solid var(--accent-strip);
+  border-left: 1px solid var(--accent-strip);
 }
 
 .card h2 {
