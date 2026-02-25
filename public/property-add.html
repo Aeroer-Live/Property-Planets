@@ -27,26 +27,53 @@
     </div>
   </header>
   <main class="container">
-    <div class="card">
-      <h2>Add Property</h2>
+    <div class="card card--accent form-card">
+      <a href="/properties.html" class="form-card-back">← Back to list</a>
+      <span class="section-label">New record</span>
+      <h2 class="section-title">Add Property</h2>
+      <p class="form-card-intro">Enter the property and owner details below. All fields marked with * are required.</p>
       <div id="alert"></div>
-      <form id="form">
-        <label for="property_name">Property Name</label>
-        <input type="text" id="property_name" name="property_name" required>
-        <label for="location">Location (State)</label>
-        <select id="location" name="location" required>
-          <option value="">Select state</option>
-        </select>
-        <label for="property_owner_name">Property Owner Name</label>
-        <input type="text" id="property_owner_name" name="property_owner_name" required>
-        <label for="ic_number">IC Number</label>
-        <input type="text" id="ic_number" name="ic_number" placeholder="e.g. 900101-01-1234">
-        <label for="phone_01">Phone Number 01</label>
-        <input type="tel" id="phone_01" name="phone_01" required>
-        <label for="phone_02">Phone Number 02</label>
-        <input type="tel" id="phone_02" name="phone_02">
-        <button type="submit" class="btn btn-primary">Add Property</button>
-        <a href="/properties.html" class="btn btn-secondary">Cancel</a>
+      <form id="form" class="add-form">
+        <fieldset class="form-section">
+          <legend class="form-section-legend">Property details</legend>
+          <div class="form-group">
+            <label for="property_name">Property name *</label>
+            <input type="text" id="property_name" name="property_name" required placeholder="e.g. Sunway Residency Unit 12A">
+          </div>
+          <div class="form-group">
+            <label for="location">Location (State) *</label>
+            <select id="location" name="location" required aria-describedby="location-hint">
+              <option value="">Select state</option>
+            </select>
+            <span id="location-hint" class="form-hint">Malaysian state or federal territory</span>
+          </div>
+        </fieldset>
+        <fieldset class="form-section">
+          <legend class="form-section-legend">Owner & contact</legend>
+          <div class="form-group">
+            <label for="property_owner_name">Property owner name *</label>
+            <input type="text" id="property_owner_name" name="property_owner_name" required placeholder="Full name as per IC">
+          </div>
+          <div class="form-group">
+            <label for="ic_number">IC number</label>
+            <input type="text" id="ic_number" name="ic_number" placeholder="e.g. 900101-01-1234" inputmode="numeric" autocomplete="off">
+            <span class="form-hint">Optional. Format: YYMMDD-PB-GGGG</span>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="phone_01">Phone 01 *</label>
+              <input type="tel" id="phone_01" name="phone_01" required placeholder="e.g. 012-345 6789">
+            </div>
+            <div class="form-group">
+              <label for="phone_02">Phone 02</label>
+              <input type="tel" id="phone_02" name="phone_02" placeholder="Optional">
+            </div>
+          </div>
+        </fieldset>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary btn--submit">Add Property</button>
+          <a href="/properties.html" class="btn btn-secondary">Cancel</a>
+        </div>
       </form>
     </div>
   </main>
