@@ -25,10 +25,41 @@
     </div>
   </header>
   <main class="container">
-    <div class="card">
-      <h2>Dashboard</h2>
-      <p>Welcome to the Property Rent Database. Use the navigation to view properties, add new records, or manage users (admin).</p>
-      <p id="pendingNotice" style="display:none; color: var(--text-muted);">
+    <section class="page-hero">
+      <span class="hero-label">Property Rent Database</span>
+      <h1 class="hero-title">Property Planets</h1>
+      <p class="hero-tagline">Manage properties, track records, and collaborate with your team. Built for scale and clarity.</p>
+      <a href="/properties.html" class="hero-cta">Explore Properties →</a>
+    </section>
+
+    <div class="card-grid">
+      <a href="/properties.html" class="card-tile">
+        <h3 class="card-tile-title">Properties</h3>
+        <p class="card-tile-desc">View, search, and filter all property records.</p>
+        <span class="card-tile-arrow">View list →</span>
+      </a>
+      <a href="/property-add.html" class="card-tile">
+        <h3 class="card-tile-title">Add Property</h3>
+        <p class="card-tile-desc">Create a new property record with owner and contact details.</p>
+        <span class="card-tile-arrow">Add new →</span>
+      </a>
+      <a href="/pending.html" class="card-tile" id="tilePending" style="display:none;">
+        <h3 class="card-tile-title">Pending Registrations</h3>
+        <p class="card-tile-desc">Approve or reject staff registration requests.</p>
+        <span class="card-tile-arrow">Manage →</span>
+      </a>
+      <a href="/users.html" class="card-tile" id="tileUsers" style="display:none;">
+        <h3 class="card-tile-title">Users</h3>
+        <p class="card-tile-desc">Manage user accounts and roles.</p>
+        <span class="card-tile-arrow">Manage →</span>
+      </a>
+    </div>
+
+    <div class="card card--accent">
+      <span class="section-label">Welcome</span>
+      <h2 class="section-title">Dashboard</h2>
+      <p>Use the cards above to jump into properties or add new records. Admins can manage pending registrations and users from the navigation or the tiles above.</p>
+      <p id="pendingNotice" style="display:none; color: var(--text-muted); margin-bottom: 0;">
         Your account is pending approval. You will get access once an admin approves your registration.
       </p>
     </div>
@@ -46,6 +77,8 @@
     document.getElementById('userName').textContent = user.username;
     if (user.role === 'Admin') {
       document.getElementById('adminLinks').innerHTML = '<a href="/pending.html">Pending</a><a href="/users.html">Users</a>';
+      document.getElementById('tilePending').style.display = '';
+      document.getElementById('tileUsers').style.display = '';
     }
     applyStoredTheme();
     document.getElementById('themeBtn').textContent = (document.documentElement.getAttribute('data-theme') || 'light') === 'dark' ? 'Light' : 'Dark';
@@ -73,6 +106,11 @@
     </div>
     <div class="footer-bottom">
       <span class="footer-copyright">© 2025 Property Planets. Property Rent Database.</span>
+    </div>
+    <div class="footer-trust">
+      <span>☁️ Cloudflare</span>
+      <span>🔒 Secure</span>
+      <span>📊 Property Database</span>
     </div>
   </footer>
 </body>
