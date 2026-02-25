@@ -35,14 +35,27 @@
           <a href="/property-add.html">+ Add Property</a>
         </div>
       </div>
-      <div class="filter-bar">
-        <label for="search" class="sr-only">Search</label>
-        <input type="text" id="search" name="search" placeholder="Search name, owner, IC, phone…" autocomplete="off" aria-label="Search properties">
-        <select id="location" name="location" aria-label="Filter by location">
-          <option value="">All locations</option>
-        </select>
-        <button type="button" class="btn btn-primary" id="searchBtn">Search</button>
-      </div>
+      <form class="filter-bar" id="filterForm" role="search" aria-label="Search and filter properties">
+        <span class="filter-bar-label">Search & filters</span>
+        <div class="filter-bar-controls">
+          <div class="filter-bar-search-wrap">
+            <span class="filter-bar-search-icon" aria-hidden="true"></span>
+            <label for="search" class="sr-only">Search</label>
+            <input type="text" id="search" name="search" placeholder="Name, owner, IC, phone…" autocomplete="off" aria-label="Search properties">
+          </div>
+          <div class="filter-bar-filters">
+            <select id="location" name="location" aria-label="Filter by location">
+              <option value="">All locations</option>
+            </select>
+            <select id="createdBy" name="created_by" aria-label="Filter by created by">
+              <option value="">All creators</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary filter-bar-submit" id="searchBtn">
+            <span class="filter-bar-submit-text">Search</span>
+          </button>
+        </div>
+      </form>
       <div id="alert"></div>
       <div id="emptyState" class="empty-state" style="display: none;">
         <div class="empty-state-icon">📋</div>
@@ -89,6 +102,7 @@
     const alertEl = document.getElementById('alert');
     const searchInput = document.getElementById('search');
     const locationSelect = document.getElementById('location');
+    const createdBySelect = document.getElementById('createdBy');
     let isAdmin = false;
     try {
       const me = await api('/api/users/me');
@@ -97,15 +111,21 @@
 
     async function loadLocations() {
       const { locations } = await api('/api/properties/locations');
-      locationSelect.innerHTML = '<option value="">All locations</option>' + locations.map(l => `<option value="${l}">${l}</option>`).join('');
+      locationSelect.innerHTML = '<option value="">All locations</option>' + locations.map(l => `<option value="${escapeHtml(l)}">${escapeHtml(l)}</option>`).join('');
+    }
+    async function loadCreators() {
+      const { creators } = await api('/api/properties/creators');
+      createdBySelect.innerHTML = '<option value="">All creators</option>' + creators.map(c => `<option value="${c.id}">${escapeHtml(c.username)}</option>`).join('');
     }
 
     async function loadPage(page = 1) {
       const search = searchInput.value.trim();
       const location = locationSelect.value;
+      const createdBy = createdBySelect.value;
       const params = new URLSearchParams({ page: String(page) });
       if (search) params.set('search', search);
       if (location) params.set('location', location);
+      if (createdBy) params.set('created_by', createdBy);
       const data = await api(`/api/properties?${params}`);
       const hasResults = data.properties.length > 0;
       document.getElementById('emptyState').style.display = hasResults ? 'none' : 'block';
@@ -171,9 +191,21 @@
       return div.innerHTML;
     }
     await loadLocations();
+    await loadCreators();
     await loadPage(1);
-    document.getElementById('searchBtn').onclick = () => loadPage(1);
-    searchInput.onkeydown = (e) => e.key === 'Enter' && loadPage(1);
+
+    let searchDebounceTimer;
+    searchInput.addEventListener('input', () => {
+      clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = setTimeout(() => loadPage(1), 300);
+    });
+    locationSelect.addEventListener('change', () => loadPage(1));
+    createdBySelect.addEventListener('change', () => loadPage(1));
+
+    document.getElementById('filterForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      loadPage(1);
+    });
   </script>
   <footer class="app-footer">
     <div class="footer-inner">

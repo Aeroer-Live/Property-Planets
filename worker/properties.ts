@@ -13,6 +13,7 @@ properties.get('/', async (c) => {
   const page = Math.max(1, parseInt(c.req.query('page') || '1', 10));
   const search = (c.req.query('search') || '').trim();
   const location = (c.req.query('location') || '').trim();
+  const createdBy = (c.req.query('created_by') || '').trim();
   const offset = (page - 1) * PAGE_SIZE;
 
   let where: string[] = [];
@@ -26,6 +27,13 @@ properties.get('/', async (c) => {
   if (location) {
     where.push('location = ?');
     params.push(location);
+  }
+  if (createdBy) {
+    const createdById = parseInt(createdBy, 10);
+    if (!Number.isNaN(createdById)) {
+      where.push('created_by = ?');
+      params.push(createdById);
+    }
   }
   const whereClause = where.length ? 'WHERE ' + where.join(' AND ') : '';
 
@@ -53,6 +61,14 @@ properties.get('/locations', async (c) => {
   const db = c.env.DB;
   const rows = await db.prepare('SELECT DISTINCT location FROM properties ORDER BY location').all();
   return c.json({ locations: rows.results.map((r: { location: string }) => r.location) });
+});
+
+properties.get('/creators', async (c) => {
+  const db = c.env.DB;
+  const rows = await db.prepare(
+    'SELECT DISTINCT u.id, u.username FROM properties p JOIN users u ON p.created_by = u.id ORDER BY u.username'
+  ).all();
+  return c.json({ creators: rows.results as { id: number; username: string }[] });
 });
 
 properties.get('/:id', async (c) => {
