@@ -17,25 +17,31 @@
       <a href="/setup.html">Setup</a>
     </nav>
   </header>
-  <main>
-  <div class="container" style="max-width: 400px; margin-top: 2rem;">
-    <div class="card">
-      <h2>Property Planets</h2>
-      <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Sign in to your account</p>
-      <div id="alert"></div>
-      <form id="loginForm">
-        <label for="username">Username</label>
-        <input type="text" id="username" name="username" required autocomplete="username">
-        <label for="password">Password</label>
-        <input type="password" id="password" name="password" required autocomplete="current-password">
-        <button type="submit" class="btn btn-primary">Sign in</button>
-      </form>
-      <p style="margin-top: 1rem;">
-        <a href="/register.html">Register as staff</a><br>
-        <a href="/setup.html" style="font-size: 0.9rem; color: var(--text-muted);">First-time setup (create admin)</a>
-      </p>
+  <main class="auth-page">
+    <div class="container">
+      <div class="auth-hero">
+        <span class="auth-label">Welcome back</span>
+        <h1 class="auth-title">Sign in</h1>
+        <p class="auth-tagline">Sign in to your account to access the Property Rent Database.</p>
+      </div>
+      <div class="auth-card">
+        <div id="alert"></div>
+        <form id="loginForm">
+          <label for="username">Username</label>
+          <input type="text" id="username" name="username" required autocomplete="username" placeholder="Enter your username">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" required autocomplete="current-password" placeholder="Enter your password">
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Sign in →</button>
+          </div>
+        </form>
+        <div class="auth-links">
+          <a href="/register.html">Register as staff →</a>
+          <a href="/setup.html" class="secondary">First-time setup (create admin)</a>
+        </div>
+      </div>
     </div>
-  </div>
+  </main>
   <script type="module">
     import { loadUser } from '/js/auth.js';
     const user = await loadUser();

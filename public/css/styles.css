@@ -139,19 +139,26 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.125rem;
+  gap: 0.25rem;
   flex-wrap: wrap;
   justify-self: center;
+  padding: 0.25rem;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.03);
+}
+
+[data-theme="dark"] .header-nav {
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .header-nav a {
   padding: 0.5rem 1rem;
-  border-radius: var(--radius-sm);
+  border-radius: 8px;
   color: var(--text-muted);
   text-decoration: none;
   font-weight: 500;
   font-size: 0.9375rem;
-  transition: color 0.2s, background 0.2s;
+  transition: color 0.2s, background 0.2s, box-shadow 0.2s;
   position: relative;
 }
 
@@ -164,14 +171,20 @@ body {
   color: var(--accent);
   background: var(--accent-muted);
   font-weight: 600;
+  box-shadow: 0 1px 2px rgba(14, 165, 233, 0.15);
+}
+
+[data-theme="dark"] .header-nav a.active {
+  box-shadow: 0 1px 2px rgba(56, 189, 248, 0.2);
 }
 
 .header-nav a.active::after {
   content: '';
   position: absolute;
-  left: 0.75rem;
-  right: 0.75rem;
-  bottom: 0.35rem;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 0.25rem;
+  width: 20px;
   height: 2px;
   background: var(--accent);
   border-radius: 1px;
@@ -475,6 +488,162 @@ main {
 .mono {
   font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
   font-size: 0.875em;
+}
+
+/* ========== Auth pages (Login / Register) ========== */
+.auth-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: min(60vh, 520px);
+  padding: 2rem 1.5rem;
+}
+
+.auth-page .container {
+  width: 100%;
+  max-width: 420px;
+  margin: 0;
+  padding: 0;
+}
+
+.auth-hero {
+  text-align: center;
+  margin-bottom: 1.75rem;
+}
+
+.auth-hero .auth-label {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  margin-bottom: 0.5rem;
+}
+
+.auth-hero .auth-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--text);
+  margin: 0 0 0.35rem;
+  line-height: 1.2;
+}
+
+.auth-hero .auth-tagline {
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.auth-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  padding: 1.75rem;
+  border-left: 4px solid var(--accent-strip);
+}
+
+.auth-card form label {
+  margin-bottom: 0.3rem;
+}
+
+.auth-card form input {
+  max-width: none;
+  margin-bottom: 1.25rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+}
+
+.auth-card form input:last-of-type {
+  margin-bottom: 1.5rem;
+}
+
+.auth-card .form-actions {
+  margin-top: 1.5rem;
+}
+
+.auth-card .btn-primary {
+  width: 100%;
+  padding: 0.75rem 1.25rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+}
+
+.auth-links {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.auth-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.auth-links a:hover {
+  color: var(--accent-hover);
+}
+
+.auth-links a.secondary {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  font-weight: 400;
+}
+
+.auth-links a.secondary:hover {
+  color: var(--text);
+}
+
+/* Register: two-column name fields on larger screens */
+.auth-card .form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.auth-card .form-row .form-group {
+  margin-bottom: 0;
+}
+
+.auth-card .form-row label,
+.auth-card .form-row input {
+  margin-bottom: 0;
+}
+
+.auth-card .form-row + label,
+.auth-card .form-row + .form-row {
+  margin-top: 0;
+}
+
+.auth-card .form-group {
+  margin-bottom: 1.25rem;
+}
+
+.auth-card .form-group:last-of-type {
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 480px) {
+  .auth-card .form-row {
+    grid-template-columns: 1fr;
+  }
+  .auth-card .form-row input {
+    margin-bottom: 1.25rem;
+  }
 }
 
 /* ========== Footer ========== */

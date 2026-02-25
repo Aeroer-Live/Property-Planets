@@ -17,34 +17,46 @@
       <a href="/setup.html">Setup</a>
     </nav>
   </header>
-  <main>
-  <div class="container" style="max-width: 480px; margin-top: 2rem;">
-    <div class="card">
-      <h2>Staff Registration</h2>
-      <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Register for a staff account. An admin must approve your request.</p>
-      <div id="alert"></div>
-      <form id="regForm">
-        <label for="username">Username</label>
-        <input type="text" id="username" name="username" required autocomplete="username">
-        <label for="first_name">First Name</label>
-        <input type="text" id="first_name" name="first_name" required>
-        <label for="last_name">Last Name</label>
-        <input type="text" id="last_name" name="last_name" required>
-        <label for="phone">Phone Number</label>
-        <input type="tel" id="phone" name="phone" required>
-        <label for="email">Email Address</label>
-        <input type="email" id="email" name="email" required autocomplete="email">
-        <label for="password">Password</label>
-        <input type="password" id="password" name="password" required minlength="8" autocomplete="new-password">
-        <label for="confirm_password">Confirm Password</label>
-        <input type="password" id="confirm_password" name="confirm_password" required autocomplete="new-password">
-        <button type="submit" class="btn btn-primary">Submit Registration</button>
-      </form>
-      <p style="margin-top: 1rem;">
-        <a href="/login.html">Back to login</a>
-      </p>
+  <main class="auth-page">
+    <div class="container" style="max-width: 480px;">
+      <div class="auth-hero">
+        <span class="auth-label">Join the team</span>
+        <h1 class="auth-title">Staff Registration</h1>
+        <p class="auth-tagline">Register for a staff account. An admin will approve your request before you can sign in.</p>
+      </div>
+      <div class="auth-card">
+        <div id="alert"></div>
+        <form id="regForm">
+          <label for="username">Username</label>
+          <input type="text" id="username" name="username" required autocomplete="username" placeholder="Choose a username">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="first_name">First Name</label>
+              <input type="text" id="first_name" name="first_name" required placeholder="First name">
+            </div>
+            <div class="form-group">
+              <label for="last_name">Last Name</label>
+              <input type="text" id="last_name" name="last_name" required placeholder="Last name">
+            </div>
+          </div>
+          <label for="phone">Phone Number</label>
+          <input type="tel" id="phone" name="phone" required placeholder="e.g. +60 12 345 6789">
+          <label for="email">Email Address</label>
+          <input type="email" id="email" name="email" required autocomplete="email" placeholder="you@example.com">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" required minlength="8" autocomplete="new-password" placeholder="At least 8 characters">
+          <label for="confirm_password">Confirm Password</label>
+          <input type="password" id="confirm_password" name="confirm_password" required autocomplete="new-password" placeholder="Re-enter password">
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Submit Registration →</button>
+          </div>
+        </form>
+        <div class="auth-links">
+          <a href="/login.html">← Back to login</a>
+        </div>
+      </div>
     </div>
-  </div>
+  </main>
   <script type="module">
     const form = document.getElementById('regForm');
     const alertEl = document.getElementById('alert');
