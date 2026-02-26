@@ -71,6 +71,13 @@ properties.get('/creators', async (c) => {
   return c.json({ creators: rows.results as { id: number; username: string }[] });
 });
 
+properties.get('/count', async (c) => {
+  const db = c.env.DB;
+  const r = await db.prepare('SELECT COUNT(*) as total FROM properties').first();
+  const total = Number((r as { total: number })?.total ?? 0);
+  return c.json({ total });
+});
+
 properties.get('/:id', async (c) => {
   const id = c.req.param('id');
   const db = c.env.DB;

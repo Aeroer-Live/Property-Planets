@@ -29,15 +29,24 @@
   </header>
   <main class="container">
     <section class="page-hero">
-      <span class="hero-label">Property Rent Database</span>
-      <h1 class="hero-title">Property Planets</h1>
-      <p class="hero-tagline">Manage properties, track records, and collaborate with your team. Built for scale and clarity.</p>
-      <a href="/properties.html" class="hero-cta">Explore Properties →</a>
+      <div class="hero-content">
+        <span class="hero-label">Property Rent Database</span>
+        <h1 class="hero-title">Property Planets</h1>
+        <p class="hero-tagline">Manage properties, track records, and collaborate with your team. Built for scale and clarity.</p>
+        <a href="/properties.html" class="hero-cta">Explore Properties →</a>
+      </div>
+      <div class="dashboard-datetime-wrap" aria-live="polite" aria-label="Current date and time">
+        <span class="dashboard-datetime-icon" aria-hidden="true"></span>
+        <div class="dashboard-datetime-inner">
+          <span class="dashboard-datetime-date" id="dashboardDate"></span>
+          <span class="dashboard-datetime-time" id="dashboardTime"></span>
+        </div>
+      </div>
     </section>
 
     <div class="card-grid">
       <a href="/properties.html" class="card-tile">
-        <h3 class="card-tile-title">Properties</h3>
+        <h3 class="card-tile-title">Properties <span class="card-tile-count" id="propertiesCount" aria-label="Total properties">—</span></h3>
         <p class="card-tile-desc">View, search, and filter all property records.</p>
         <span class="card-tile-arrow">View list →</span>
       </a>
@@ -52,7 +61,7 @@
         <span class="card-tile-arrow">Manage →</span>
       </a>
       <a href="/users.html" class="card-tile" id="tileUsers" style="display:none;">
-        <h3 class="card-tile-title">Users</h3>
+        <h3 class="card-tile-title">Users <span class="card-tile-count" id="staffCount" aria-label="Total staff users">—</span></h3>
         <p class="card-tile-desc">Manage user accounts and roles.</p>
         <span class="card-tile-arrow">Manage →</span>
       </a>
@@ -66,9 +75,27 @@
         Your account is pending approval. You will get access once an admin approves your registration.
       </p>
     </div>
+
+    <div class="card card--accent dashboard-recent">
+      <div class="dashboard-recent-header">
+        <div>
+          <span class="section-label">Activity</span>
+          <h2 class="section-title">Recently added or updated</h2>
+        </div>
+        <a href="/properties.html" class="btn btn-secondary btn-sm">View all</a>
+      </div>
+      <div id="recentPropertiesWrap" class="dashboard-recent-wrap">
+        <p class="dashboard-recent-loading" id="recentPropertiesLoading">Loading…</p>
+        <div class="dashboard-recent-list" id="recentPropertiesList" style="display: none;"></div>
+        <div class="dashboard-recent-empty" id="recentPropertiesEmpty" style="display: none;">
+          <p>No properties yet. <a href="/property-add.html">Add your first property</a>.</p>
+        </div>
+      </div>
+    </div>
   </main>
   <script type="module">
-    import { loadUser, getCurrentUser, logout, setTheme, applyStoredTheme, requireAuth } from '/js/auth.js';
+    import { api } from '/js/api.js';
+    import { loadUser, logout, setTheme, applyStoredTheme, requireAuth } from '/js/auth.js';
     if (!requireAuth()) throw new Error('redirect');
     const user = await loadUser();
     if (!user) throw new Error('redirect');
@@ -78,7 +105,8 @@
       document.querySelector('a[href="/property-add.html"]').style.display = 'none';
     }
     document.getElementById('userName').textContent = user.username;
-    if (user.role === 'Admin') {
+    const isAdmin = user.role === 'Admin';
+    if (isAdmin) {
       document.getElementById('adminLinks').innerHTML = '<a href="/pending.html">Pending</a><a href="/users.html">Users</a>';
       document.getElementById('tilePending').style.display = '';
       document.getElementById('tileUsers').style.display = '';
@@ -91,6 +119,87 @@
       document.getElementById('themeBtn').textContent = next === 'dark' ? 'Light' : 'Dark';
     };
     document.getElementById('logoutBtn').onclick = () => logout();
+
+    try {
+      const propsRes = await api('/api/properties/count');
+      const countEl = document.getElementById('propertiesCount');
+      if (countEl) countEl.textContent = `(${propsRes.total ?? 0})`;
+    } catch (_) {}
+    if (isAdmin) {
+      try {
+        const usersRes = await api('/api/users/count');
+        const staffEl = document.getElementById('staffCount');
+        if (staffEl) staffEl.textContent = `(${usersRes.staff ?? 0} staff)`;
+      } catch (_) {}
+    }
+
+    const RECENT_LIMIT = 8;
+    function escapeHtml(s) {
+      if (s == null) return '';
+      const div = document.createElement('div');
+      div.textContent = s;
+      return div.innerHTML;
+    }
+    function formatRecentDate(iso) {
+      if (!iso) return '—';
+      const d = new Date(iso);
+      return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+    try {
+      const listEl = document.getElementById('recentPropertiesList');
+      const loadingEl = document.getElementById('recentPropertiesLoading');
+      const emptyEl = document.getElementById('recentPropertiesEmpty');
+      const data = await api('/api/properties?page=1');
+      const recent = (data.properties || []).slice(0, RECENT_LIMIT);
+      loadingEl.style.display = 'none';
+      if (recent.length === 0) {
+        emptyEl.style.display = 'block';
+      } else {
+        listEl.style.display = 'block';
+        listEl.innerHTML = `
+          <table class="dashboard-recent-table">
+            <thead>
+              <tr>
+                <th>Property</th>
+                <th>Location</th>
+                <th>Owner</th>
+                <th>Updated</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              ${recent.map(p => `
+                <tr>
+                  <td><strong>${escapeHtml(p.property_name)}</strong></td>
+                  <td>${escapeHtml(p.location)}</td>
+                  <td>${escapeHtml(p.property_owner_name)}</td>
+                  <td>${formatRecentDate(p.updated_at || p.created_at)}</td>
+                  <td><a href="/property-edit.html?id=${p.id}" class="btn btn-secondary btn-sm">View</a></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      }
+    } catch (_) {
+      document.getElementById('recentPropertiesLoading').textContent = 'Unable to load recent properties.';
+    }
+
+    function formatDashboardDateTime() {
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+      const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
+      return { dateStr, timeStr };
+    }
+    function updateDateTime() {
+      const { dateStr, timeStr } = formatDashboardDateTime();
+      const dateEl = document.getElementById('dashboardDate');
+      const timeEl = document.getElementById('dashboardTime');
+      if (dateEl) dateEl.textContent = dateStr;
+      if (timeEl) timeEl.textContent = timeStr;
+    }
+    updateDateTime();
+    setInterval(updateDateTime, 1000);
   </script>
   <footer class="app-footer">
     <div class="footer-inner">

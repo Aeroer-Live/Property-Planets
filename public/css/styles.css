@@ -328,6 +328,15 @@ main {
 /* ========== Hero / Section (ProductivityTask-style) ========== */
 .page-hero {
   margin-bottom: 2rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.hero-content {
+  flex: 1;
+  min-width: 0;
 }
 
 .hero-label {
@@ -338,6 +347,174 @@ main {
   letter-spacing: 0.08em;
   color: var(--accent);
   margin-bottom: 0.5rem;
+}
+
+/* Dashboard date & time block */
+.dashboard-datetime-wrap {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-shrink: 0;
+  padding: 1rem 1.35rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.dashboard-datetime-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  background: var(--accent-muted);
+  color: var(--accent);
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpolyline points='12 6 12 12 16 14'/%3E%3C/svg%3E");
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpolyline points='12 6 12 12 16 14'/%3E%3C/svg%3E");
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+}
+
+.dashboard-datetime-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.dashboard-datetime-date {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.dashboard-datetime-time {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 700px) {
+  .page-hero {
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+  .dashboard-datetime-wrap {
+    align-self: flex-end;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-datetime-wrap {
+    padding: 0.875rem 1rem;
+    gap: 0.75rem;
+    align-self: stretch;
+  }
+  .dashboard-datetime-icon {
+    width: 2rem;
+    height: 2rem;
+  }
+  .dashboard-datetime-time {
+    font-size: 1.25rem;
+  }
+}
+
+/* Dashboard recent properties section */
+.dashboard-recent {
+  border-left: 4px solid var(--accent-strip);
+}
+
+.dashboard-recent-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.dashboard-recent-header .section-title {
+  margin-bottom: 0;
+}
+
+.dashboard-recent-wrap {
+  position: relative;
+}
+
+.dashboard-recent-loading {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.9375rem;
+}
+
+.dashboard-recent-empty {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.9375rem;
+}
+
+.dashboard-recent-empty a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.dashboard-recent-empty a:hover {
+  text-decoration: underline;
+}
+
+.dashboard-recent-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+
+.dashboard-recent-table th,
+.dashboard-recent-table td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.dashboard-recent-table th {
+  font-weight: 600;
+  color: var(--text-muted);
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: var(--bg);
+}
+
+.dashboard-recent-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.dashboard-recent-table tbody tr:hover td {
+  background: var(--bg);
+}
+
+.dashboard-recent-table td a {
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .dashboard-recent-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .dashboard-recent-table th:nth-child(2),
+  .dashboard-recent-table td:nth-child(2) {
+    display: none;
+  }
+  .dashboard-recent-table th,
+  .dashboard-recent-table td {
+    padding: 0.6rem 0.75rem;
+    font-size: 0.875rem;
+  }
 }
 
 .hero-title {
@@ -352,7 +529,7 @@ main {
 .hero-tagline {
   font-size: 1.0625rem;
   color: var(--text-muted);
-  margin: 0 0 1.5rem;
+  margin: 0 0 1.25rem;
   max-width: 540px;
 }
 
@@ -429,6 +606,13 @@ main {
   font-weight: 600;
   font-size: 1rem;
   margin: 0 0 0.25rem;
+}
+
+.card-tile-count {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--accent);
+  margin-left: 0.35rem;
 }
 
 .card-tile-desc {

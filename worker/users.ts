@@ -71,6 +71,15 @@ users.post('/:id/reject', requireAdmin, async (c) => {
   return c.json({ message: 'User rejected' });
 });
 
+users.get('/count', requireAdmin, async (c) => {
+  const db = c.env.DB;
+  const totalResult = await db.prepare('SELECT COUNT(*) as total FROM users').first();
+  const staffResult = await db.prepare("SELECT COUNT(*) as total FROM users WHERE role = 'Staff'").first();
+  const total = Number((totalResult as { total: number })?.total ?? 0);
+  const staff = Number((staffResult as { total: number })?.total ?? 0);
+  return c.json({ total, staff });
+});
+
 users.get('/', requireAdmin, async (c) => {
   const db = c.env.DB;
   const rows = await db.prepare(
