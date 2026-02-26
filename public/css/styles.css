@@ -871,6 +871,16 @@ main {
   color: var(--footer-text);
 }
 
+.footer-copyright .footer-dev-link {
+  color: var(--footer-text);
+  text-decoration: none;
+}
+
+.footer-copyright .footer-dev-link:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
 .footer-legal {
   display: flex;
   gap: 1.25rem;
