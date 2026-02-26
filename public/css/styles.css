@@ -120,19 +120,13 @@ body {
   width: 38px;
   height: 38px;
   border-radius: 10px;
-  background: linear-gradient(145deg, var(--accent) 0%, var(--accent-hover) 100%);
-  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.35);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-size: 1.125rem;
-  font-weight: 700;
+  object-fit: contain;
   flex-shrink: 0;
+  display: block;
 }
 
-[data-theme="dark"] .header-brand-icon {
-  box-shadow: 0 2px 12px rgba(56, 189, 248, 0.4);
+.header-brand img.header-brand-icon {
+  vertical-align: middle;
 }
 
 .header-nav {
@@ -1678,7 +1672,7 @@ tr:hover td {
     border-top: 1px solid var(--border);
   }
   .header-brand { font-size: 1.125rem; }
-  .header-brand-icon { width: 34px; height: 34px; font-size: 1rem; }
+  .header-brand-icon { width: 34px; height: 34px; }
   .header-nav a { padding: 0.45rem 0.65rem; font-size: 0.875rem; }
   .header-nav a.active::after { left: 0.5rem; right: 0.5rem; bottom: 0.3rem; }
   .header-actions { padding: 0 0.25rem 0 0.5rem; min-height: 36px; }
