@@ -1,6 +1,10 @@
 Logo for Property Planets
 =========================
-Copy "Property Planets.png" from the project's Logo folder here and rename it to:
-  logo.png
+To fix the missing logo in the header, run this in the project root:
 
-So the file should be: public/images/logo.png
+  npm run copy-logo
+
+That copies "Logo/Property Planets.png" to public/images/logo.png.
+
+Or copy manually: put "Property Planets.png" from the Logo folder here
+and rename it to: logo.png

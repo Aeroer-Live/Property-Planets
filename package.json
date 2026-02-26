@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "copy-logo": "node scripts/copy-logo.js",
+    "predev": "npm run copy-logo",
+    "predeploy": "npm run copy-logo",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "db:create": "wrangler d1 create property-planets-db",
