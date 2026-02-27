@@ -1028,6 +1028,7 @@ main {
   margin: 0.35rem 0 0;
   font-size: 0.875rem;
   color: var(--footer-text);
+  font-weight: 500;
   max-width: 360px;
   line-height: 1.5;
 }
