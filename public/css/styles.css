@@ -1024,6 +1024,14 @@ main {
   color: var(--accent);
 }
 
+.footer-tagline {
+  margin: 0.35rem 0 0;
+  font-size: 0.875rem;
+  color: var(--footer-text);
+  max-width: 360px;
+  line-height: 1.5;
+}
+
 .footer-nav {
   display: flex;
   gap: 2.5rem;
