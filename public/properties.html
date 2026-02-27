@@ -171,7 +171,7 @@
           paginationEl.appendChild(info);
         }
       }
-      paginationEl.querySelectorAll('[data-delete]').forEach(btn => {
+      tbody.querySelectorAll('[data-delete]').forEach(btn => {
         btn.onclick = async () => {
           if (!confirm('Delete this property?')) return;
           try {
