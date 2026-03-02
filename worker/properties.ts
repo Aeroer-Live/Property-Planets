@@ -163,6 +163,22 @@ properties.post('/', async (c) => {
   return c.json(row, 201);
 });
 
+properties.post('/bulk-delete', requireAdmin, async (c) => {
+  const body = await c.req.json<{ ids?: number[] }>();
+  const ids = body?.ids;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return c.json({ error: 'ids array is required and must not be empty' }, 400);
+  }
+  const validIds = ids.filter((id) => typeof id === 'number' && Number.isInteger(id) && id > 0);
+  if (validIds.length === 0) {
+    return c.json({ error: 'No valid property ids provided' }, 400);
+  }
+  const db = c.env.DB;
+  const placeholders = validIds.map(() => '?').join(',');
+  const r = await db.prepare(`DELETE FROM properties WHERE id IN (${placeholders})`).bind(...validIds).run();
+  return c.json({ deleted: r.meta.changes ?? validIds.length });
+});
+
 properties.put('/:id', requireAdmin, async (c) => {
   const id = c.req.param('id');
   const body = await c.req.json<{

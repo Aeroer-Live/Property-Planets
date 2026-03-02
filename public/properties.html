@@ -70,10 +70,15 @@
         <p>Add your first property to get started.</p>
         <a href="/property-add.html" class="btn btn-primary">Add Property</a>
       </div>
+      <div class="bulk-action-bar" id="bulkBar" style="display: none;" role="status" aria-live="polite">
+        <span class="bulk-action-bar-count"><span id="bulkCount">0</span> selected</span>
+        <button type="button" class="btn btn-danger btn-sm" id="bulkDeleteBtn">Delete selected</button>
+      </div>
       <div class="properties-table-wrap" id="tableWrap">
         <table>
           <thead>
             <tr>
+              <th class="th-select" id="thSelect" style="display: none;"><input type="checkbox" id="selectAll" aria-label="Select all on this page"></th>
               <th>Property Name</th>
               <th>Owner</th>
               <th>IC Number</th>
@@ -297,8 +302,12 @@
       document.getElementById('tableWrap').style.display = hasResults ? 'block' : 'none';
       paginationEl.style.display = hasResults ? 'flex' : 'none';
 
+      const thSelect = document.getElementById('thSelect');
+      if (thSelect) thSelect.style.display = isAdmin ? '' : 'none';
+
       tbody.innerHTML = data.properties.map(p => `
         <tr>
+          ${isAdmin ? `<td class="td-select"><input type="checkbox" class="row-select" data-id="${p.id}" aria-label="Select ${escapeHtml(p.property_name)}"></td>` : ''}
           <td><strong>${escapeHtml(p.property_name)}</strong></td>
           <td>${escapeHtml(p.property_owner_name)}</td>
           <td>${escapeHtml(p.ic_number || '—')}</td>
@@ -341,6 +350,52 @@
           }
         };
       });
+
+      if (isAdmin) {
+        const selectAllEl = document.getElementById('selectAll');
+        const bulkBar = document.getElementById('bulkBar');
+        const bulkCountEl = document.getElementById('bulkCount');
+        const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+
+        function updateBulkBar() {
+          const checked = tbody.querySelectorAll('.row-select:checked');
+          const n = checked.length;
+          if (bulkBar) bulkBar.style.display = n > 0 ? 'flex' : 'none';
+          if (bulkCountEl) bulkCountEl.textContent = String(n);
+          if (selectAllEl) {
+            const total = tbody.querySelectorAll('.row-select').length;
+            selectAllEl.checked = total > 0 && n === total;
+            selectAllEl.indeterminate = n > 0 && n < total;
+          }
+        }
+
+        tbody.querySelectorAll('.row-select').forEach(cb => {
+          cb.addEventListener('change', updateBulkBar);
+        });
+        if (selectAllEl) {
+          selectAllEl.checked = false;
+          selectAllEl.indeterminate = false;
+          selectAllEl.addEventListener('change', () => {
+            const check = selectAllEl.checked;
+            tbody.querySelectorAll('.row-select').forEach(c => { c.checked = check; });
+            updateBulkBar();
+          });
+        }
+        if (bulkDeleteBtn) {
+          bulkDeleteBtn.onclick = async () => {
+            const ids = Array.from(tbody.querySelectorAll('.row-select:checked')).map(c => parseInt(c.dataset.id, 10));
+            if (ids.length === 0) return;
+            if (!confirm(`Delete ${ids.length} propert${ids.length === 1 ? 'y' : 'ies'}? This cannot be undone.`)) return;
+            try {
+              await api('/api/properties/bulk-delete', { method: 'POST', body: JSON.stringify({ ids }) });
+              loadPage(p);
+            } catch (e) {
+              alertEl.innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+            }
+          };
+        }
+        updateBulkBar();
+      }
     }
     function createBtn(text, enabled, fn) {
       const b = document.createElement('button');
