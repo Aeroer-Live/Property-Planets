@@ -208,32 +208,55 @@ const HEADER_MAP: Record<string, string> = {
   'nric': 'ic_number',
 };
 
-/** Parse a single CSV line respecting quoted fields (handles commas inside quotes). */
-function parseCSVLine(line: string): string[] {
-  const out: string[] = [];
-  let cur = '';
-  let inQuotes = false;
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (ch === '"') {
-      inQuotes = !inQuotes;
-    } else if (inQuotes) {
-      cur += ch;
-    } else if (ch === ',') {
-      out.push(cur.trim());
-      cur = '';
-    } else {
-      cur += ch;
-    }
+/** Unescape a CSV cell value (strip surrounding quotes, unescape "" -> "). */
+function unquoteCell(s: string): string {
+  const t = s.trim();
+  if (t.length >= 2 && t.startsWith('"') && t.endsWith('"')) {
+    return t.slice(1, -1).replace(/""/g, '"').trim();
   }
-  out.push(cur.trim());
-  return out;
+  return t;
 }
 
-/** Parse CSV text into rows (array of string arrays). */
+/** Parse CSV text into rows. Handles newlines inside quoted fields and comma/semicolon delimiter. */
 function parseCSV(text: string): string[][] {
-  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-  return lines.map((l) => parseCSVLine(l));
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cell = '';
+  let inQuotes = false;
+  const delim = (() => {
+    const firstLine = text.split(/\r?\n/)[0] ?? '';
+    const withComma = firstLine.split(',').length;
+    const withSemi = firstLine.split(';').length;
+    return withSemi > withComma ? ';' : ',';
+  })();
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    const next = text[i + 1];
+    if (ch === '"') {
+      if (inQuotes && next === '"') {
+        cell += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (inQuotes) {
+      cell += ch;
+    } else if (ch === delim) {
+      row.push(unquoteCell(cell));
+      cell = '';
+    } else if (ch === '\n' || ch === '\r') {
+      if (ch === '\r' && next === '\n') i++;
+      row.push(unquoteCell(cell));
+      cell = '';
+      if (row.some((c) => c.length > 0)) rows.push(row);
+      row = [];
+    } else {
+      cell += ch;
+    }
+  }
+  row.push(unquoteCell(cell));
+  if (row.some((c) => c.length > 0)) rows.push(row);
+  return rows;
 }
 
 properties.post('/import', requireAdmin, async (c) => {
