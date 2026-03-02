@@ -9,7 +9,15 @@ import type { Env, Variables } from './types';
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
 app.use('*', secureHeaders());
-app.use('*', cors({ origin: ['http://localhost:8787', 'http://127.0.0.1:8787'], credentials: true }));
+app.use('*', cors({
+  origin: (origin) => {
+    if (!origin) return null;
+    if (origin === 'http://localhost:8787' || origin === 'http://127.0.0.1:8787') return origin;
+    if (origin.endsWith('.workers.dev') || origin.endsWith('.wealthbeegroup.workers.dev')) return origin;
+    return null;
+  },
+  credentials: true,
+}));
 
 app.route('/api/auth', authRoutes);
 app.route('/api/users', userRoutes);

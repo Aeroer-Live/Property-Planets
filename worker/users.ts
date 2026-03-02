@@ -8,24 +8,30 @@ const users = new Hono<{ Bindings: Env; Variables: Variables }>();
 users.use('*', requireAuth);
 
 users.get('/me', async (c) => {
-  const db = c.env.DB;
-  const id = c.get('userId');
-  const row = await db.prepare(
-    'SELECT id, username, first_name, last_name, phone, email, role, status, theme_preference, created_at FROM users WHERE id = ?'
-  ).bind(id).first();
-  if (!row) return c.json({ error: 'User not found' }, 404);
-  return c.json({
-    id: row.id,
-    username: row.username,
-    first_name: row.first_name,
-    last_name: row.last_name,
-    phone: row.phone,
-    email: row.email,
-    role: row.role,
-    status: row.status,
-    theme_preference: row.theme_preference,
-    created_at: row.created_at,
-  });
+  try {
+    const db = c.env.DB;
+    const id = c.get('userId');
+    if (!id) return c.json({ error: 'Unauthorized' }, 401);
+    const row = await db.prepare(
+      'SELECT id, username, first_name, last_name, phone, email, role, status, theme_preference, created_at FROM users WHERE id = ?'
+    ).bind(id).first();
+    if (!row) return c.json({ error: 'User not found' }, 404);
+    return c.json({
+      id: row.id,
+      username: row.username,
+      first_name: row.first_name,
+      last_name: row.last_name,
+      phone: row.phone,
+      email: row.email,
+      role: row.role,
+      status: row.status,
+      theme_preference: row.theme_preference ?? 'light',
+      created_at: row.created_at,
+    });
+  } catch (e) {
+    console.error('/api/users/me error:', e);
+    return c.json({ error: 'Server error' }, 500);
+  }
 });
 
 users.patch('/me/theme', async (c) => {

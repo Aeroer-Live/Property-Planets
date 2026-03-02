@@ -461,8 +461,10 @@
         if (importBtn) importBtn.disabled = true;
         importResult.style.display = 'none';
         try {
+          const token = localStorage.getItem('token');
           const res = await fetch('/api/properties/import', {
             method: 'POST',
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
             credentials: 'include',
             body: formData,
           });

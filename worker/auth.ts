@@ -28,22 +28,15 @@ authRoutes.post('/login', async (c) => {
     { sub: String(row.id), role: row.role as string },
     getJwtSecret()
   );
-  const isSecure = new URL(c.req.url).protocol === 'https:';
-  const cookieOpts = `Path=/; HttpOnly; SameSite=Strict; Max-Age=604800${isSecure ? '; Secure' : ''}`; // 7 days
-  return c.json(
-    {
-      user: {
-        id: row.id,
-        username: row.username,
-        role: row.role,
-        theme_preference: row.theme_preference || 'light',
-      },
+  return c.json({
+    token,
+    user: {
+      id: row.id,
+      username: row.username,
+      role: row.role,
+      theme_preference: row.theme_preference || 'light',
     },
-    200,
-    {
-      'Set-Cookie': `token=${token}; ${cookieOpts}`,
-    }
-  );
+  });
 });
 
 authRoutes.post('/setup', async (c) => {

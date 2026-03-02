@@ -1,4 +1,4 @@
-import { api, clearToken } from './api.js';
+import { api, setToken, clearToken } from './api.js';
 
 let currentUser = null;
 
@@ -26,6 +26,7 @@ export async function login(username, password) {
     method: 'POST',
     body: JSON.stringify({ username, password }),
   });
+  if (data.token) setToken(data.token);
   currentUser = data.user;
   return data;
 }
@@ -41,6 +42,7 @@ export async function logout() {
   try {
     await api('/api/auth/logout', { method: 'POST' });
   } catch (_) {}
+  clearToken();
   currentUser = null;
   window.location.href = '/login.html';
 }
