@@ -38,6 +38,11 @@
           <a href="/property-add.html">+ Add Property</a>
         </div>
       </div>
+      <div class="search-bar-wrap" aria-label="Quick search">
+        <label for="searchBar" class="visually-hidden">Search properties by name, owner, phone, or IC number</label>
+        <input type="search" id="searchBar" class="search-bar-input" placeholder="Search by name, owner, phone, IC…" autocomplete="off" aria-describedby="searchBarHint">
+        <span id="searchBarHint" class="visually-hidden">Results update as you type. Use Search Builder below for advanced filters.</span>
+      </div>
       <section class="import-section" id="importSection" style="display: none;" aria-label="Import from CSV">
         <div class="import-section-inner">
           <div class="import-section-header">
@@ -314,6 +319,8 @@
     async function loadPage(page = 1) {
       const filters = getFilters();
       const params = new URLSearchParams({ page: String(page) });
+      const searchVal = (document.getElementById('searchBar')?.value || '').trim();
+      if (searchVal) params.set('search', searchVal);
       if (filters.length) params.set('filters', encodeURIComponent(JSON.stringify(filters)));
       const data = await api(`/api/properties?${params}`);
       const hasResults = data.properties.length > 0;
@@ -446,6 +453,16 @@
       updateSearchBuilderActions();
       loadPage(1);
     });
+
+    let searchBarDebounce = null;
+    const searchBarEl = document.getElementById('searchBar');
+    if (searchBarEl) {
+      searchBarEl.addEventListener('input', () => {
+        clearTimeout(searchBarDebounce);
+        searchBarDebounce = setTimeout(() => loadPage(1), 300);
+      });
+      searchBarEl.addEventListener('search', () => loadPage(1));
+    }
 
     const importFile = document.getElementById('importFile');
     const importBtn = document.getElementById('importBtn');

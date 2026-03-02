@@ -88,6 +88,7 @@ properties.use('*', requireAuth);
 properties.get('/', async (c) => {
   const db = c.env.DB;
   const page = Math.max(1, parseInt(c.req.query('page') || '1', 10));
+  const search = (c.req.query('search') || c.req.query('q') || '').trim();
   const filtersParam = c.req.query('filters');
   let filters: FilterRow[] = [];
   try {
@@ -95,8 +96,20 @@ properties.get('/', async (c) => {
   } catch (_) {}
   if (!Array.isArray(filters)) filters = [];
 
+  const { where: filterWhere, params: filterParams } = buildFilterClause(filters);
+  const searchPart = search
+    ? '(p.property_name LIKE ? OR p.property_owner_name LIKE ? OR p.phone_01 LIKE ? OR p.phone_02 LIKE ? OR p.ic_number LIKE ?)'
+    : '';
+  const searchParams = search ? [search, search, search, search, search].map((v) => `%${v}%`) : [];
+  const whereClause =
+    searchPart && filterWhere
+      ? 'WHERE ' + searchPart + ' AND ' + filterWhere.replace(/^WHERE\s+/, '')
+      : searchPart
+        ? 'WHERE ' + searchPart
+        : filterWhere;
+  const params = [...searchParams, ...filterParams];
   const offset = (page - 1) * PAGE_SIZE;
-  const { where: whereClause, params } = buildFilterClause(filters);
+
   const countResult = await db.prepare(
     `SELECT COUNT(*) as total FROM properties p ${whereClause}`
   ).bind(...params).first();

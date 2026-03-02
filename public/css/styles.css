@@ -1611,6 +1611,47 @@ tr:hover td {
   color: var(--text-muted);
 }
 
+/* Visually hidden (screen readers) */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Quick search bar */
+.search-bar-wrap {
+  margin-bottom: 1rem;
+}
+.search-bar-input {
+  width: 100%;
+  max-width: 28rem;
+  padding: 0.625rem 1rem;
+  font-size: 1rem;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.search-bar-input::placeholder {
+  color: var(--text-muted);
+}
+.search-bar-input:hover {
+  border-color: var(--accent);
+}
+.search-bar-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-muted);
+}
+
 /* Search Builder */
 .search-builder {
   margin-bottom: 1.5rem;
