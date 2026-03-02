@@ -139,6 +139,31 @@
     ];
     const VALUE_OPS = new Set(['equals', 'not_equals', 'starts_with', 'does_not_start_with', 'contains', 'does_not_contain', 'ends_with', 'does_not_end_with']);
 
+    const SEARCH_DEBOUNCE_MS = 380;
+    let searchDebounceTimer = null;
+
+    function runSearch() {
+      clearTimeout(searchDebounceTimer);
+      loadPage(1);
+    }
+
+    function runSearchDebounced() {
+      clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = setTimeout(() => loadPage(1), SEARCH_DEBOUNCE_MS);
+    }
+
+    function attachAutoSearchToRow(row) {
+      const valueEl = row.querySelector('[data-value]');
+      if (!valueEl) return;
+      valueEl.removeEventListener('input', runSearchDebounced);
+      valueEl.removeEventListener('change', runSearch);
+      if (valueEl.tagName === 'INPUT') {
+        valueEl.addEventListener('input', runSearchDebounced);
+      } else {
+        valueEl.addEventListener('change', runSearch);
+      }
+    }
+
     async function loadCreators() {
       const res = await api('/api/properties/creators');
       creators = res.creators || [];
@@ -195,20 +220,27 @@
       updateRowValueCell(row, column, operator);
       const valueEl = row.querySelector('[data-value]');
       if (valueEl && value) valueEl.value = value;
+      attachAutoSearchToRow(row);
 
       row.querySelector('[data-column]').addEventListener('change', () => {
         const col = row.querySelector('[data-column]').value;
         const op = row.querySelector('[data-operator]').value;
         updateRowValueCell(row, col, op);
+        attachAutoSearchToRow(row);
+        runSearch();
       });
       row.querySelector('[data-operator]').addEventListener('change', () => {
         const col = row.querySelector('[data-column]').value;
         const op = row.querySelector('[data-operator]').value;
         updateRowValueCell(row, col, op);
+        attachAutoSearchToRow(row);
+        runSearch();
       });
+      row.querySelector('[data-logic]')?.addEventListener('change', runSearch);
       row.querySelector('[data-remove]').addEventListener('click', () => {
         row.remove();
         reindexRows();
+        runSearch();
       });
     }
 
@@ -219,12 +251,13 @@
         const logicWrap = r.querySelector('.search-builder-logic-wrap');
         if (i === 0 && logicWrap) {
           logicWrap.innerHTML = '<span class="search-builder-logic-placeholder"></span><button type="button" class="search-builder-remove" data-remove aria-label="Remove condition" title="Remove condition"><span aria-hidden="true">×</span></button>';
-          logicWrap.querySelector('[data-remove]').onclick = () => { r.remove(); reindexRows(); };
+          logicWrap.querySelector('[data-remove]').onclick = () => { r.remove(); reindexRows(); runSearch(); };
         } else if (i > 0 && logicWrap && !logicWrap.querySelector('select')) {
           logicWrap.innerHTML = `<select class="search-builder-logic" data-logic aria-label="Combine with previous">
             <option value="and">And</option><option value="or">Or</option>
           </select><button type="button" class="search-builder-remove" data-remove aria-label="Remove condition" title="Remove condition"><span aria-hidden="true">×</span></button>`;
-          logicWrap.querySelector('[data-remove]').onclick = () => { r.remove(); reindexRows(); };
+          logicWrap.querySelector('[data-remove]').onclick = () => { r.remove(); reindexRows(); runSearch(); };
+          logicWrap.querySelector('[data-logic]').addEventListener('change', runSearch);
         }
       });
       searchBuilderCount.textContent = String(rows.length);
