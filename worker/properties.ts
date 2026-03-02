@@ -248,7 +248,8 @@ properties.post('/import', requireAdmin, async (c) => {
   }
   let rows: string[][];
   try {
-    const text = await file.text();
+    let text = await file.text();
+    text = text.replace(/^\uFEFF/, ''); // strip BOM (Excel CSV UTF-8)
     rows = parseCSV(text);
   } catch (e) {
     return c.json({ error: 'Invalid or corrupted file. ' + (e instanceof Error ? e.message : '') }, 400);
@@ -289,7 +290,12 @@ properties.post('/import', requireAdmin, async (c) => {
       ).bind(property_name, property_owner_name, phone_01, (phone_02 || '').trim() || null, (ic_number || '').trim() || null, userId).run();
       imported++;
     } catch (e) {
-      errors.push(`Row ${r + 1}: ${e instanceof Error ? e.message : 'Insert failed'}.`);
+      const msg = e instanceof Error ? e.message : 'Insert failed';
+      if (msg.includes('location') && msg.includes('NOT NULL')) {
+        errors.push(`Row ${r + 1}: Database still has old "location" column. Run: npx wrangler d1 migrations apply property-planets-db`);
+      } else {
+        errors.push(`Row ${r + 1}: ${msg}`);
+      }
     }
   }
   return c.json({ imported, errors: errors.slice(0, 50) });
