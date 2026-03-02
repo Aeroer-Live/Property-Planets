@@ -38,24 +38,31 @@
           <a href="/property-add.html">+ Add Property</a>
         </div>
       </div>
-      <form class="filter-bar" id="filterForm" role="search" aria-label="Search and filter properties">
-        <span class="filter-bar-label">Search & filters</span>
-        <div class="filter-bar-controls">
-          <div class="filter-bar-search-wrap">
-            <span class="filter-bar-search-icon" aria-hidden="true"></span>
-            <label for="search" class="sr-only">Search</label>
-            <input type="text" id="search" name="search" placeholder="Name, owner, IC, phone…" autocomplete="off" aria-label="Search properties">
+      <section class="search-builder" id="searchBuilder" aria-label="Search builder">
+        <div class="search-builder-header">
+          <div class="search-builder-header-inner">
+            <span class="search-builder-icon" aria-hidden="true">🔍</span>
+            <div>
+              <h3 class="search-builder-title">Search Builder</h3>
+              <p class="search-builder-desc">Combine conditions to filter by property name, owner, phone, IC number, or creator.</p>
+            </div>
+            <span class="search-builder-badge" id="searchBuilderCount" aria-live="polite">1</span>
           </div>
-          <div class="filter-bar-filters">
-            <select id="createdBy" name="created_by" aria-label="Filter by created by">
-              <option value="">All creators</option>
-            </select>
-          </div>
-          <button type="submit" class="btn btn-primary filter-bar-submit" id="searchBtn">
-            <span class="filter-bar-submit-text">Search</span>
+        </div>
+        <div class="search-builder-rows" id="searchBuilderRows">
+          <!-- Rows injected by JS -->
+        </div>
+        <div class="search-builder-add-wrap">
+          <button type="button" class="search-builder-add-btn" id="addConditionBtn">
+            <span class="search-builder-add-icon" aria-hidden="true">+</span>
+            Add condition
           </button>
         </div>
-      </form>
+        <div class="search-builder-actions">
+          <button type="button" class="btn btn-secondary btn-sm" id="clearFiltersBtn" style="display: none;">Clear</button>
+          <button type="button" class="btn btn-primary" id="searchBtn">Search</button>
+        </div>
+      </section>
       <div id="alert"></div>
       <div id="emptyState" class="empty-state" style="display: none;">
         <div class="empty-state-icon">📋</div>
@@ -101,25 +108,156 @@
     const tbody = document.getElementById('tbody');
     const paginationEl = document.getElementById('pagination');
     const alertEl = document.getElementById('alert');
-    const searchInput = document.getElementById('search');
-    const createdBySelect = document.getElementById('createdBy');
+    const searchBuilderRows = document.getElementById('searchBuilderRows');
+    const searchBuilderCount = document.getElementById('searchBuilderCount');
+    let creators = [];
     let isAdmin = false;
     try {
       const me = await api('/api/users/me');
       isAdmin = me.role === 'Admin';
     } catch (_) {}
 
+    const COLUMNS = [
+      { value: 'property_name', label: 'Property Name' },
+      { value: 'property_owner_name', label: 'Owner' },
+      { value: 'phone_01', label: 'Phone 01' },
+      { value: 'phone_02', label: 'Phone 02' },
+      { value: 'ic_number', label: 'IC Number' },
+      { value: 'created_by', label: 'Created by' },
+    ];
+    const OPERATORS = [
+      { value: 'equals', label: 'Equals' },
+      { value: 'not_equals', label: 'Not equals' },
+      { value: 'starts_with', label: 'Starts with' },
+      { value: 'does_not_start_with', label: 'Does not start with' },
+      { value: 'contains', label: 'Contains' },
+      { value: 'does_not_contain', label: 'Does not contain' },
+      { value: 'ends_with', label: 'Ends with' },
+      { value: 'does_not_end_with', label: 'Does not end with' },
+      { value: 'empty', label: 'Empty' },
+      { value: 'not_empty', label: 'Not empty' },
+    ];
+    const VALUE_OPS = new Set(['equals', 'not_equals', 'starts_with', 'does_not_start_with', 'contains', 'does_not_contain', 'ends_with', 'does_not_end_with']);
+
     async function loadCreators() {
-      const { creators } = await api('/api/properties/creators');
-      createdBySelect.innerHTML = '<option value="">All creators</option>' + creators.map(c => `<option value="${c.id}">${escapeHtml(c.username)}</option>`).join('');
+      const res = await api('/api/properties/creators');
+      creators = res.creators || [];
+    }
+
+    function updateRowValueCell(rowEl, column, operator) {
+      const cell = rowEl.querySelector('.search-builder-value-cell');
+      const isCreatedBy = column === 'created_by';
+      const needValue = VALUE_OPS.has(operator);
+      if (!needValue) {
+        cell.innerHTML = '<span class="search-builder-value-muted">—</span>';
+        return;
+      }
+      if (isCreatedBy) {
+        cell.innerHTML = `<select class="search-builder-value-select" data-value aria-label="Value">
+          <option value="">Select creator</option>
+          ${creators.map(c => `<option value="${c.id}">${escapeHtml(c.username)}</option>`).join('')}
+        </select>`;
+      } else {
+        cell.innerHTML = `<input type="text" class="search-builder-value-input" data-value placeholder="Value" aria-label="Value">`;
+      }
+    }
+
+    function addConditionRow(index, data = {}) {
+      const logic = index === 0 ? null : (data.logic || 'and');
+      const column = data.column || 'property_name';
+      const operator = data.operator || 'contains';
+      const value = data.value ?? '';
+      const row = document.createElement('div');
+      row.className = 'search-builder-row';
+      row.dataset.index = String(index);
+      const logicHtml = index === 0
+        ? '<div class="search-builder-logic-wrap"><span class="search-builder-logic-placeholder" aria-hidden="true"></span><button type="button" class="search-builder-remove" data-remove aria-label="Remove condition" title="Remove condition"><span aria-hidden="true">×</span></button></div>'
+        : `<div class="search-builder-logic-wrap">
+            <select class="search-builder-logic" data-logic aria-label="Combine with previous">
+              <option value="and" ${logic === 'and' ? 'selected' : ''}>And</option>
+              <option value="or" ${logic === 'or' ? 'selected' : ''}>Or</option>
+            </select>
+            <button type="button" class="search-builder-remove" data-remove aria-label="Remove condition" title="Remove condition"><span aria-hidden="true">×</span></button>
+          </div>`;
+      row.innerHTML = `
+        ${logicHtml}
+        <div class="search-builder-fields">
+        <select class="search-builder-column" data-column aria-label="Column">
+          ${COLUMNS.map(c => `<option value="${c.value}" ${c.value === column ? 'selected' : ''}>${escapeHtml(c.label)}</option>`).join('')}
+        </select>
+        <select class="search-builder-operator" data-operator aria-label="Condition">
+          ${OPERATORS.map(o => `<option value="${o.value}" ${o.value === operator ? 'selected' : ''}>${escapeHtml(o.label)}</option>`).join('')}
+        </select>
+        <div class="search-builder-value-cell"></div>
+        </div>
+      `;
+      searchBuilderRows.appendChild(row);
+      updateRowValueCell(row, column, operator);
+      const valueEl = row.querySelector('[data-value]');
+      if (valueEl && value) valueEl.value = value;
+
+      row.querySelector('[data-column]').addEventListener('change', () => {
+        const col = row.querySelector('[data-column]').value;
+        const op = row.querySelector('[data-operator]').value;
+        updateRowValueCell(row, col, op);
+      });
+      row.querySelector('[data-operator]').addEventListener('change', () => {
+        const col = row.querySelector('[data-column]').value;
+        const op = row.querySelector('[data-operator]').value;
+        updateRowValueCell(row, col, op);
+      });
+      row.querySelector('[data-remove]').addEventListener('click', () => {
+        row.remove();
+        reindexRows();
+      });
+    }
+
+    function reindexRows() {
+      const rows = searchBuilderRows.querySelectorAll('.search-builder-row');
+      rows.forEach((r, i) => {
+        r.dataset.index = String(i);
+        const logicWrap = r.querySelector('.search-builder-logic-wrap');
+        if (i === 0 && logicWrap) {
+          logicWrap.innerHTML = '<span class="search-builder-logic-placeholder"></span><button type="button" class="search-builder-remove" data-remove aria-label="Remove condition" title="Remove condition"><span aria-hidden="true">×</span></button>';
+          logicWrap.querySelector('[data-remove]').onclick = () => { r.remove(); reindexRows(); };
+        } else if (i > 0 && logicWrap && !logicWrap.querySelector('select')) {
+          logicWrap.innerHTML = `<select class="search-builder-logic" data-logic aria-label="Combine with previous">
+            <option value="and">And</option><option value="or">Or</option>
+          </select><button type="button" class="search-builder-remove" data-remove aria-label="Remove condition" title="Remove condition"><span aria-hidden="true">×</span></button>`;
+          logicWrap.querySelector('[data-remove]').onclick = () => { r.remove(); reindexRows(); };
+        }
+      });
+      searchBuilderCount.textContent = String(rows.length);
+      updateSearchBuilderActions();
+    }
+
+    function updateSearchBuilderActions() {
+      const rows = searchBuilderRows.querySelectorAll('.search-builder-row');
+      const hasConditions = rows.length > 0;
+      const clearBtn = document.getElementById('clearFiltersBtn');
+      if (clearBtn) clearBtn.style.display = hasConditions ? 'inline-flex' : 'none';
+    }
+
+    function getFilters() {
+      const rows = searchBuilderRows.querySelectorAll('.search-builder-row');
+      return Array.from(rows).map((row, i) => {
+        const column = row.querySelector('[data-column]').value;
+        const operator = row.querySelector('[data-operator]').value;
+        const valueEl = row.querySelector('[data-value]');
+        const value = valueEl ? valueEl.value?.trim() ?? '' : '';
+        const logic = i > 0 ? row.querySelector('[data-logic]')?.value || 'and' : undefined;
+        return { column, operator, value, logic };
+      }).filter(f => {
+        if (!f.column || !f.operator) return false;
+        if (VALUE_OPS.has(f.operator) && !f.value) return false;
+        return true;
+      });
     }
 
     async function loadPage(page = 1) {
-      const search = searchInput.value.trim();
-      const createdBy = createdBySelect.value;
+      const filters = getFilters();
       const params = new URLSearchParams({ page: String(page) });
-      if (search) params.set('search', search);
-      if (createdBy) params.set('created_by', createdBy);
+      if (filters.length) params.set('filters', encodeURIComponent(JSON.stringify(filters)));
       const data = await api(`/api/properties?${params}`);
       const hasResults = data.properties.length > 0;
       document.getElementById('emptyState').style.display = hasResults ? 'none' : 'block';
@@ -184,19 +322,26 @@
       return div.innerHTML;
     }
     await loadCreators();
-    await loadPage(1);
+    addConditionRow(0);
+    searchBuilderCount.textContent = '1';
 
-    let searchDebounceTimer;
-    searchInput.addEventListener('input', () => {
-      clearTimeout(searchDebounceTimer);
-      searchDebounceTimer = setTimeout(() => loadPage(1), 300);
+    document.getElementById('addConditionBtn').addEventListener('click', () => {
+      const rows = searchBuilderRows.querySelectorAll('.search-builder-row');
+      addConditionRow(rows.length, { logic: 'and', column: 'property_name', operator: 'contains', value: '' });
+      searchBuilderCount.textContent = String(rows.length + 1);
+      updateSearchBuilderActions();
     });
-    createdBySelect.addEventListener('change', () => loadPage(1));
-
-    document.getElementById('filterForm').addEventListener('submit', (e) => {
-      e.preventDefault();
+    document.getElementById('searchBtn').addEventListener('click', () => loadPage(1));
+    document.getElementById('clearFiltersBtn').addEventListener('click', () => {
+      searchBuilderRows.innerHTML = '';
+      addConditionRow(0);
+      searchBuilderCount.textContent = '1';
+      updateSearchBuilderActions();
       loadPage(1);
     });
+
+    updateSearchBuilderActions();
+    await loadPage(1);
   </script>
   <footer class="app-footer">
     <div class="footer-inner">

@@ -4,36 +4,101 @@ import type { Env, Variables } from './types';
 
 const PAGE_SIZE = 20;
 
-const properties = new Hono<{ Bindings: Env; Variables: Variables }>();
+/** Allowed filter columns (property table or join). */
+const FILTER_COLUMNS = new Set(['property_name', 'property_owner_name', 'phone_01', 'phone_02', 'ic_number', 'created_by']);
+/** Operators that need a value. */
+const VALUE_OPS = new Set(['equals', 'not_equals', 'starts_with', 'does_not_start_with', 'contains', 'does_not_contain', 'ends_with', 'does_not_end_with']);
 
+type FilterRow = { column: string; operator: string; value?: string; logic?: 'and' | 'or' };
+
+function buildFilterClause(filters: FilterRow[]): { where: string; params: (string | number)[] } {
+  const parts: string[] = [];
+  const params: (string | number)[] = [];
+  const prefix = 'p.';
+
+  for (let i = 0; i < filters.length; i++) {
+    const row = filters[i];
+    if (!row?.column || !FILTER_COLUMNS.has(row.column)) continue;
+    const op = String(row.operator || 'equals').toLowerCase();
+    const col = row.column === 'created_by' ? 'p.created_by' : `${prefix}${row.column}`;
+    const val = row.value?.trim();
+    const needVal = VALUE_OPS.has(op);
+
+    const logic = i > 0 ? (row.logic === 'or' ? ' OR ' : ' AND ') : '';
+    let frag: string;
+    let addParams: (string | number)[] = [];
+
+    if (op === 'equals') {
+      if (row.column === 'created_by') {
+        const id = parseInt(val ?? '', 10);
+        if (!Number.isNaN(id)) {
+          frag = `${col} = ?`;
+          addParams = [id];
+        } else continue;
+      } else {
+        frag = `${col} = ?`;
+        addParams = [val ?? ''];
+      }
+    } else if (op === 'not_equals') {
+      if (row.column === 'created_by' && val) {
+        const id = parseInt(val, 10);
+        if (!Number.isNaN(id)) {
+          frag = `(${col} != ? OR ${col} IS NULL)`;
+          addParams = [id];
+        } else continue;
+      } else {
+        frag = `(${col} != ? OR ${col} IS NULL)`;
+        addParams = [val ?? ''];
+      }
+    } else if (op === 'starts_with') {
+      frag = `${col} LIKE ?`;
+      addParams = [(val ?? '') + '%'];
+    } else if (op === 'does_not_start_with') {
+      frag = `(${col} NOT LIKE ? OR ${col} IS NULL)`;
+      addParams = [(val ?? '') + '%'];
+    } else if (op === 'contains') {
+      frag = `${col} LIKE ?`;
+      addParams = ['%' + (val ?? '') + '%'];
+    } else if (op === 'does_not_contain') {
+      frag = `(${col} NOT LIKE ? OR ${col} IS NULL)`;
+      addParams = ['%' + (val ?? '') + '%'];
+    } else if (op === 'ends_with') {
+      frag = `${col} LIKE ?`;
+      addParams = ['%' + (val ?? '')];
+    } else if (op === 'does_not_end_with') {
+      frag = `(${col} NOT LIKE ? OR ${col} IS NULL)`;
+      addParams = ['%' + (val ?? '')];
+    } else if (op === 'empty') {
+      frag = row.column === 'created_by' ? `${col} IS NULL` : `(${col} IS NULL OR ${col} = '')`;
+    } else if (op === 'not_empty') {
+      frag = row.column === 'created_by' ? `${col} IS NOT NULL` : `(${col} IS NOT NULL AND ${col} != '')`;
+    } else continue;
+
+    parts.push(logic + (i === 0 ? frag : `(${frag})`));
+    params.push(...addParams);
+  }
+
+  const where = parts.length ? 'WHERE ' + (parts.length === 1 ? parts[0] : parts.join('')) : '';
+  return { where, params };
+}
+
+const properties = new Hono<{ Bindings: Env; Variables: Variables }>();
 properties.use('*', requireAuth);
 
 properties.get('/', async (c) => {
   const db = c.env.DB;
   const page = Math.max(1, parseInt(c.req.query('page') || '1', 10));
-  const search = (c.req.query('search') || '').trim();
-  const createdBy = (c.req.query('created_by') || '').trim();
+  const filtersParam = c.req.query('filters');
+  let filters: FilterRow[] = [];
+  try {
+    if (filtersParam) filters = JSON.parse(decodeURIComponent(filtersParam)) as FilterRow[];
+  } catch (_) {}
+  if (!Array.isArray(filters)) filters = [];
+
   const offset = (page - 1) * PAGE_SIZE;
-
-  let where: string[] = [];
-  let params: (string | number)[] = [];
-
-  if (search) {
-    const term = `%${search}%`;
-    where.push('(property_name LIKE ? OR property_owner_name LIKE ? OR phone_01 LIKE ? OR phone_02 LIKE ? OR ic_number LIKE ?)');
-    params.push(term, term, term, term, term);
-  }
-  if (createdBy) {
-    const createdById = parseInt(createdBy, 10);
-    if (!Number.isNaN(createdById)) {
-      where.push('created_by = ?');
-      params.push(createdById);
-    }
-  }
-  const whereClause = where.length ? 'WHERE ' + where.join(' AND ') : '';
-
+  const { where: whereClause, params } = buildFilterClause(filters);
   const countResult = await db.prepare(
-    `SELECT COUNT(*) as total FROM properties ${whereClause}`
+    `SELECT COUNT(*) as total FROM properties p ${whereClause}`
   ).bind(...params).first();
   const total = Number((countResult as { total: number })?.total ?? 0);
 
