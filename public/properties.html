@@ -38,6 +38,22 @@
           <a href="/property-add.html">+ Add Property</a>
         </div>
       </div>
+      <section class="import-section" id="importSection" style="display: none;" aria-label="Import from CSV">
+        <div class="import-section-inner">
+          <div class="import-section-header">
+            <span class="import-section-icon" aria-hidden="true">📤</span>
+            <div>
+              <h3 class="import-section-title">Import from CSV</h3>
+              <p class="import-section-desc">Upload a CSV file (in Excel: File → Save As → CSV UTF-8). First row must be headers. Required columns: <strong>Property Name</strong>, <strong>Owner</strong> (or Property Owner Name), <strong>Phone 01</strong> (or Phone). Optional: Phone 02, IC Number.</p>
+            </div>
+          </div>
+          <form class="import-form" id="importForm">
+            <input type="file" id="importFile" name="file" accept=".csv" aria-label="Choose CSV file">
+            <button type="submit" class="btn btn-primary" id="importBtn" disabled>Import</button>
+          </form>
+          <div id="importResult" class="import-result" style="display: none;"></div>
+        </div>
+      </section>
       <section class="search-builder" id="searchBuilder" aria-label="Search builder">
         <div class="search-builder-header">
           <div class="search-builder-header-inner">
@@ -121,6 +137,9 @@
       const me = await api('/api/users/me');
       isAdmin = me.role === 'Admin';
     } catch (_) {}
+
+    const importSection = document.getElementById('importSection');
+    if (importSection) importSection.style.display = isAdmin ? 'block' : 'none';
 
     const COLUMNS = [
       { value: 'property_name', label: 'Property Name' },
@@ -427,6 +446,53 @@
       updateSearchBuilderActions();
       loadPage(1);
     });
+
+    const importFile = document.getElementById('importFile');
+    const importBtn = document.getElementById('importBtn');
+    const importForm = document.getElementById('importForm');
+    const importResult = document.getElementById('importResult');
+    if (importFile) importFile.addEventListener('change', () => { if (importBtn) importBtn.disabled = !importFile.files?.length; });
+    if (importForm) {
+      importForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!importFile?.files?.length) return;
+        const token = localStorage.getItem('token');
+        const formData = new FormData();
+        formData.append('file', importFile.files[0]);
+        if (importBtn) importBtn.disabled = true;
+        importResult.style.display = 'none';
+        try {
+          const res = await fetch('/api/properties/import', {
+            method: 'POST',
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+            body: formData,
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.error || res.statusText);
+          importResult.style.display = 'block';
+          importResult.className = 'import-result import-result--success';
+          let msg = `Imported ${data.imported ?? 0} propert${(data.imported ?? 0) === 1 ? 'y' : 'ies'}.`;
+          if (data.errors?.length) msg += ` ${data.errors.length} row(s) skipped or failed.`;
+          importResult.textContent = msg;
+          if (data.errors?.length) {
+            const ul = document.createElement('ul');
+            ul.className = 'import-result-errors';
+            data.errors.slice(0, 10).forEach(err => { const li = document.createElement('li'); li.textContent = err; ul.appendChild(li); });
+            importResult.appendChild(ul);
+          }
+          importFile.value = '';
+          if (importBtn) importBtn.disabled = true;
+          loadPage(1);
+        } catch (err) {
+          importResult.style.display = 'block';
+          importResult.className = 'import-result import-result--error';
+          importResult.textContent = err.message || 'Import failed';
+          if (importBtn) importBtn.disabled = false;
+        } finally {
+          if (importBtn && importFile.files?.length) importBtn.disabled = false;
+        }
+      });
+    }
 
     updateSearchBuilderActions();
     await loadPage(1);

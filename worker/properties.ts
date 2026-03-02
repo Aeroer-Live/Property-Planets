@@ -179,6 +179,122 @@ properties.post('/bulk-delete', requireAdmin, async (c) => {
   return c.json({ deleted: r.meta.changes ?? validIds.length });
 });
 
+/** Normalize Excel header for column mapping */
+function norm(s: string): string {
+  return String(s ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+/** Map normalized header to property field name */
+const HEADER_MAP: Record<string, string> = {
+  'property name': 'property_name',
+  'property': 'property_name',
+  'name': 'property_name',
+  'owner': 'property_owner_name',
+  'property owner': 'property_owner_name',
+  'owner name': 'property_owner_name',
+  'property owner name': 'property_owner_name',
+  'phone': 'phone_01',
+  'phone 01': 'phone_01',
+  'phone 1': 'phone_01',
+  'phone1': 'phone_01',
+  'phone01': 'phone_01',
+  'phone 02': 'phone_02',
+  'phone 2': 'phone_02',
+  'phone2': 'phone_02',
+  'phone02': 'phone_02',
+  'ic': 'ic_number',
+  'ic number': 'ic_number',
+  'ic no': 'ic_number',
+  'nric': 'ic_number',
+};
+
+/** Parse a single CSV line respecting quoted fields (handles commas inside quotes). */
+function parseCSVLine(line: string): string[] {
+  const out: string[] = [];
+  let cur = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      inQuotes = !inQuotes;
+    } else if (inQuotes) {
+      cur += ch;
+    } else if (ch === ',') {
+      out.push(cur.trim());
+      cur = '';
+    } else {
+      cur += ch;
+    }
+  }
+  out.push(cur.trim());
+  return out;
+}
+
+/** Parse CSV text into rows (array of string arrays). */
+function parseCSV(text: string): string[][] {
+  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  return lines.map((l) => parseCSVLine(l));
+}
+
+properties.post('/import', requireAdmin, async (c) => {
+  const formData = await c.req.formData();
+  const file = formData.get('file');
+  if (!file || !(file instanceof File)) {
+    return c.json({ error: 'No file uploaded. Use form field "file".' }, 400);
+  }
+  const name = (file.name || '').toLowerCase();
+  if (!name.endsWith('.csv')) {
+    return c.json({ error: 'File must be a CSV file. In Excel, use Save As → CSV UTF-8 to export.' }, 400);
+  }
+  let rows: string[][];
+  try {
+    const text = await file.text();
+    rows = parseCSV(text);
+  } catch (e) {
+    return c.json({ error: 'Invalid or corrupted file. ' + (e instanceof Error ? e.message : '') }, 400);
+  }
+  if (!rows.length) return c.json({ error: 'File has no data rows' }, 400);
+  const headerRow = rows[0];
+  const headers = headerRow.map((h) => norm(String(h ?? '')));
+  const colIndex: Record<string, number> = {};
+  for (let i = 0; i < headers.length; i++) {
+    const key = HEADER_MAP[headers[i]];
+    if (key && colIndex[key] === undefined) colIndex[key] = i;
+  }
+  if (colIndex.property_name === undefined || colIndex.property_owner_name === undefined || colIndex.phone_01 === undefined) {
+    return c.json({
+      error: 'File must have columns for Property Name, Owner (or Property Owner Name), and Phone 01 (or Phone).',
+    }, 400);
+  }
+  const userId = c.get('userId');
+  const db = c.env.DB;
+  const errors: string[] = [];
+  let imported = 0;
+  for (let r = 1; r < rows.length; r++) {
+    const row = rows[r];
+    if (!row || !Array.isArray(row)) continue;
+    const cell = (i: number) => (row[i] != null ? String(row[i]).trim() : '');
+    const property_name = cell(colIndex.property_name ?? -1);
+    const property_owner_name = colIndex.property_owner_name != null ? cell(colIndex.property_owner_name) : '';
+    const phone_01 = cell(colIndex.phone_01 ?? -1);
+    const phone_02 = colIndex.phone_02 != null ? cell(colIndex.phone_02) : undefined;
+    const ic_number = colIndex.ic_number != null ? cell(colIndex.ic_number) : undefined;
+    if (!property_name || !property_owner_name || !phone_01) {
+      errors.push(`Row ${r + 1}: missing required field (property name, owner, or phone 01). Skipped.`);
+      continue;
+    }
+    try {
+      await db.prepare(
+        `INSERT INTO properties (property_name, property_owner_name, phone_01, phone_02, ic_number, created_by) VALUES (?, ?, ?, ?, ?, ?)`
+      ).bind(property_name, property_owner_name, phone_01, (phone_02 || '').trim() || null, (ic_number || '').trim() || null, userId).run();
+      imported++;
+    } catch (e) {
+      errors.push(`Row ${r + 1}: ${e instanceof Error ? e.message : 'Insert failed'}.`);
+    }
+  }
+  return c.json({ imported, errors: errors.slice(0, 50) });
+});
+
 properties.put('/:id', requireAdmin, async (c) => {
   const id = c.req.param('id');
   const body = await c.req.json<{
