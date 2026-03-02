@@ -47,9 +47,6 @@
             <input type="text" id="search" name="search" placeholder="Name, owner, IC, phone…" autocomplete="off" aria-label="Search properties">
           </div>
           <div class="filter-bar-filters">
-            <select id="location" name="location" aria-label="Filter by location">
-              <option value="">All locations</option>
-            </select>
             <select id="createdBy" name="created_by" aria-label="Filter by created by">
               <option value="">All creators</option>
             </select>
@@ -71,7 +68,6 @@
           <thead>
             <tr>
               <th>Name</th>
-              <th>Location</th>
               <th>Owner</th>
               <th>IC Number</th>
               <th>Phone 01</th>
@@ -106,7 +102,6 @@
     const paginationEl = document.getElementById('pagination');
     const alertEl = document.getElementById('alert');
     const searchInput = document.getElementById('search');
-    const locationSelect = document.getElementById('location');
     const createdBySelect = document.getElementById('createdBy');
     let isAdmin = false;
     try {
@@ -114,10 +109,6 @@
       isAdmin = me.role === 'Admin';
     } catch (_) {}
 
-    async function loadLocations() {
-      const { locations } = await api('/api/properties/locations');
-      locationSelect.innerHTML = '<option value="">All locations</option>' + locations.map(l => `<option value="${escapeHtml(l)}">${escapeHtml(l)}</option>`).join('');
-    }
     async function loadCreators() {
       const { creators } = await api('/api/properties/creators');
       createdBySelect.innerHTML = '<option value="">All creators</option>' + creators.map(c => `<option value="${c.id}">${escapeHtml(c.username)}</option>`).join('');
@@ -125,11 +116,9 @@
 
     async function loadPage(page = 1) {
       const search = searchInput.value.trim();
-      const location = locationSelect.value;
       const createdBy = createdBySelect.value;
       const params = new URLSearchParams({ page: String(page) });
       if (search) params.set('search', search);
-      if (location) params.set('location', location);
       if (createdBy) params.set('created_by', createdBy);
       const data = await api(`/api/properties?${params}`);
       const hasResults = data.properties.length > 0;
@@ -140,7 +129,6 @@
       tbody.innerHTML = data.properties.map(p => `
         <tr>
           <td><strong>${escapeHtml(p.property_name)}</strong></td>
-          <td><span class="table-location">${escapeHtml(p.location)}</span></td>
           <td>${escapeHtml(p.property_owner_name)}</td>
           <td>${escapeHtml(p.ic_number || '—')}</td>
           <td>${escapeHtml(p.phone_01)}</td>
@@ -195,7 +183,6 @@
       div.textContent = s;
       return div.innerHTML;
     }
-    await loadLocations();
     await loadCreators();
     await loadPage(1);
 
@@ -204,7 +191,6 @@
       clearTimeout(searchDebounceTimer);
       searchDebounceTimer = setTimeout(() => loadPage(1), 300);
     });
-    locationSelect.addEventListener('change', () => loadPage(1));
     createdBySelect.addEventListener('change', () => loadPage(1));
 
     document.getElementById('filterForm').addEventListener('submit', (e) => {

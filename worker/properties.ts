@@ -12,7 +12,6 @@ properties.get('/', async (c) => {
   const db = c.env.DB;
   const page = Math.max(1, parseInt(c.req.query('page') || '1', 10));
   const search = (c.req.query('search') || '').trim();
-  const location = (c.req.query('location') || '').trim();
   const createdBy = (c.req.query('created_by') || '').trim();
   const offset = (page - 1) * PAGE_SIZE;
 
@@ -23,10 +22,6 @@ properties.get('/', async (c) => {
     const term = `%${search}%`;
     where.push('(property_name LIKE ? OR property_owner_name LIKE ? OR phone_01 LIKE ? OR phone_02 LIKE ? OR ic_number LIKE ?)');
     params.push(term, term, term, term, term);
-  }
-  if (location) {
-    where.push('location = ?');
-    params.push(location);
   }
   if (createdBy) {
     const createdById = parseInt(createdBy, 10);
@@ -57,12 +52,6 @@ properties.get('/', async (c) => {
   });
 });
 
-properties.get('/locations', async (c) => {
-  const db = c.env.DB;
-  const rows = await db.prepare('SELECT DISTINCT location FROM properties ORDER BY location').all();
-  return c.json({ locations: rows.results.map((r: { location: string }) => r.location) });
-});
-
 properties.get('/creators', async (c) => {
   const db = c.env.DB;
   const rows = await db.prepare(
@@ -91,21 +80,20 @@ properties.get('/:id', async (c) => {
 properties.post('/', async (c) => {
   const body = await c.req.json<{
     property_name: string;
-    location: string;
     property_owner_name: string;
     phone_01: string;
     phone_02?: string;
     ic_number?: string;
   }>();
-  const { property_name, location, property_owner_name, phone_01, phone_02, ic_number } = body || {};
-  if (!property_name?.trim() || !location?.trim() || !property_owner_name?.trim() || !phone_01?.trim()) {
-    return c.json({ error: 'property_name, location, property_owner_name and phone_01 are required' }, 400);
+  const { property_name, property_owner_name, phone_01, phone_02, ic_number } = body || {};
+  if (!property_name?.trim() || !property_owner_name?.trim() || !phone_01?.trim()) {
+    return c.json({ error: 'property_name, property_owner_name and phone_01 are required' }, 400);
   }
   const userId = c.get('userId');
   const db = c.env.DB;
   const r = await db.prepare(
-    `INSERT INTO properties (property_name, location, property_owner_name, phone_01, phone_02, ic_number, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)`
-  ).bind(property_name.trim(), location.trim(), property_owner_name.trim(), phone_01.trim(), (phone_02 || '').trim() || null, (ic_number || '').trim() || null, userId).run();
+    `INSERT INTO properties (property_name, property_owner_name, phone_01, phone_02, ic_number, created_by) VALUES (?, ?, ?, ?, ?, ?)`
+  ).bind(property_name.trim(), property_owner_name.trim(), phone_01.trim(), (phone_02 || '').trim() || null, (ic_number || '').trim() || null, userId).run();
   const row = await db.prepare('SELECT * FROM properties WHERE id = ?').bind(Number(r.meta.last_row_id)).first();
   return c.json(row, 201);
 });
@@ -114,7 +102,6 @@ properties.put('/:id', requireAdmin, async (c) => {
   const id = c.req.param('id');
   const body = await c.req.json<{
     property_name?: string;
-    location?: string;
     property_owner_name?: string;
     phone_01?: string;
     phone_02?: string;
@@ -125,14 +112,13 @@ properties.put('/:id', requireAdmin, async (c) => {
   const existing = await db.prepare('SELECT * FROM properties WHERE id = ?').bind(id).first() as Record<string, unknown> | null;
   if (!existing) return c.json({ error: 'Property not found' }, 404);
   const property_name = body?.property_name?.trim() ?? existing.property_name;
-  const location = body?.location?.trim() ?? existing.location;
   const property_owner_name = body?.property_owner_name?.trim() ?? existing.property_owner_name;
   const phone_01 = body?.phone_01?.trim() ?? existing.phone_01;
   const phone_02 = body?.phone_02 !== undefined ? (body.phone_02?.trim() || null) : existing.phone_02;
   const ic_number = body?.ic_number !== undefined ? (body.ic_number?.trim() || null) : existing.ic_number;
   await db.prepare(
-    `UPDATE properties SET property_name = ?, location = ?, property_owner_name = ?, phone_01 = ?, phone_02 = ?, ic_number = ?, updated_by = ?, updated_at = datetime('now') WHERE id = ?`
-  ).bind(property_name, location, property_owner_name, phone_01, phone_02, ic_number, userId, id).run();
+    `UPDATE properties SET property_name = ?, property_owner_name = ?, phone_01 = ?, phone_02 = ?, ic_number = ?, updated_by = ?, updated_at = datetime('now') WHERE id = ?`
+  ).bind(property_name, property_owner_name, phone_01, phone_02, ic_number, userId, id).run();
   const row = await db.prepare('SELECT * FROM properties WHERE id = ?').bind(id).first();
   return c.json(row);
 });

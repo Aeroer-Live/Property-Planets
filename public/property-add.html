@@ -41,13 +41,6 @@
             <label for="property_name">Property name *</label>
             <input type="text" id="property_name" name="property_name" required placeholder="e.g. Sunway Residency Unit 12A">
           </div>
-          <div class="form-group">
-            <label for="location">Location (State) *</label>
-            <select id="location" name="location" required aria-describedby="location-hint">
-              <option value="">Select state</option>
-            </select>
-            <span id="location-hint" class="form-hint">Malaysian state or federal territory</span>
-          </div>
         </fieldset>
         <fieldset class="form-section">
           <legend class="form-section-legend">Owner & contact</legend>
@@ -94,10 +87,6 @@
     };
     document.getElementById('logoutBtn').onclick = () => import('/js/auth.js').then(m => m.logout());
 
-    const MALAYSIA_STATES = ['Johor', 'Kedah', 'Kelantan', 'Malacca', 'Negeri Sembilan', 'Pahang', 'Penang', 'Perak', 'Perlis', 'Sabah', 'Sarawak', 'Selangor', 'Terengganu', 'Kuala Lumpur', 'Labuan', 'Putrajaya'];
-    const locationSelect = document.getElementById('location');
-    locationSelect.innerHTML = '<option value="">Select state</option>' + MALAYSIA_STATES.map(s => `<option value="${s}">${s}</option>`).join('');
-
     const form = document.getElementById('form');
     const alertEl = document.getElementById('alert');
     form.addEventListener('submit', async (e) => {
@@ -108,7 +97,6 @@
           method: 'POST',
           body: JSON.stringify({
             property_name: form.property_name.value.trim(),
-            location: form.location.value,
             property_owner_name: form.property_owner_name.value.trim(),
             ic_number: form.ic_number.value.trim() || undefined,
             phone_01: form.phone_01.value.trim(),

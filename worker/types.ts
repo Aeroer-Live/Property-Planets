@@ -26,7 +26,6 @@ export interface User {
 export interface Property {
   id: number;
   property_name: string;
-  location: string;
   property_owner_name: string;
   ic_number: string | null;
   phone_01: string;

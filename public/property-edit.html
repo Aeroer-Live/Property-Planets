@@ -34,10 +34,6 @@
       <form id="form" style="display:none;">
         <label for="property_name">Property Name</label>
         <input type="text" id="property_name" name="property_name" required>
-        <label for="location">Location (State)</label>
-        <select id="location" name="location" required>
-          <option value="">Select state</option>
-        </select>
         <label for="property_owner_name">Property Owner Name</label>
         <input type="text" id="property_owner_name" name="property_owner_name" required>
         <label for="ic_number">IC Number</label>
@@ -74,10 +70,8 @@
     const id = params.get('id');
     if (!id) { window.location.href = '/properties.html'; throw new Error('redirect'); }
 
-    const MALAYSIA_STATES = ['Johor', 'Kedah', 'Kelantan', 'Malacca', 'Negeri Sembilan', 'Pahang', 'Penang', 'Perak', 'Perlis', 'Sabah', 'Sarawak', 'Selangor', 'Terengganu', 'Kuala Lumpur', 'Labuan', 'Putrajaya'];
     const form = document.getElementById('form');
     const alertEl = document.getElementById('alert');
-    const locationSelect = document.getElementById('location');
     let isAdmin = false;
     try {
       const me = await api('/api/users/me');
@@ -87,7 +81,6 @@
     const prop = await api(`/api/properties/${id}`);
     document.getElementById('loading').style.display = 'none';
     form.style.display = 'block';
-    locationSelect.innerHTML = MALAYSIA_STATES.map(s => `<option value="${s}" ${s === prop.location ? 'selected' : ''}>${s}</option>`).join('');
     form.property_name.value = prop.property_name;
     form.property_owner_name.value = prop.property_owner_name;
     form.ic_number.value = prop.ic_number || '';
@@ -110,7 +103,6 @@
           method: 'PUT',
           body: JSON.stringify({
             property_name: form.property_name.value.trim(),
-            location: form.location.value,
             property_owner_name: form.property_owner_name.value.trim(),
             ic_number: form.ic_number.value.trim() || undefined,
             phone_01: form.phone_01.value.trim(),

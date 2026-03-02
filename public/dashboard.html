@@ -162,7 +162,6 @@
             <thead>
               <tr>
                 <th>Property</th>
-                <th>Location</th>
                 <th>Owner</th>
                 <th>Updated</th>
                 <th></th>
@@ -172,7 +171,6 @@
               ${recent.map(p => `
                 <tr>
                   <td><strong>${escapeHtml(p.property_name)}</strong></td>
-                  <td>${escapeHtml(p.location)}</td>
                   <td>${escapeHtml(p.property_owner_name)}</td>
                   <td>${formatRecentDate(p.updated_at || p.created_at)}</td>
                   <td><a href="/property-edit.html?id=${p.id}" class="btn btn-secondary btn-sm">View</a></td>

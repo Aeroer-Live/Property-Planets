@@ -1560,16 +1560,6 @@ tr:hover td {
   border-bottom: none;
 }
 
-.table-location {
-  display: inline-block;
-  padding: 0.2rem 0.5rem;
-  border-radius: 6px;
-  background: var(--accent-muted);
-  color: var(--accent);
-  font-size: 0.8125rem;
-  font-weight: 500;
-}
-
 .table-actions {
   display: inline-flex;
   align-items: center;
@@ -1715,5 +1705,4 @@ tr:hover td {
   .filter-bar-submit { width: 100%; }
   .properties-table-wrap th,
   .properties-table-wrap td { padding: 0.6rem 0.75rem; font-size: 0.875rem; }
-  .table-location { font-size: 0.75rem; padding: 0.15rem 0.4rem; }
 }
