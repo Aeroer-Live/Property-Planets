@@ -97,7 +97,7 @@
   <script type="module">
     import { api } from '/js/api.js';
     import { loadUser, logout, setTheme, applyStoredTheme, requireAuth } from '/js/auth.js';
-    if (!requireAuth()) throw new Error('redirect');
+    if (!(await requireAuth())) throw new Error('redirect');
     const user = await loadUser();
     if (!user) throw new Error('redirect');
     if (user.status !== 'Active') {

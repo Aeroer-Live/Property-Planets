@@ -12,7 +12,7 @@ authRoutes.post('/login', async (c) => {
     return c.json({ error: 'Username and password required' }, 400);
   }
   const db = c.env.DB;
-  const row = await db.prepare('SELECT id, username, password, role, status FROM users WHERE username = ?').bind(username).first();
+  const row = await db.prepare('SELECT id, username, password, role, status, theme_preference FROM users WHERE username = ?').bind(username).first();
   if (!row) {
     return c.json({ error: 'Invalid username or password' }, 401);
   }
@@ -28,14 +28,22 @@ authRoutes.post('/login', async (c) => {
     { sub: String(row.id), role: row.role as string },
     getJwtSecret()
   );
-  return c.json({
-    token,
-    user: {
-      id: row.id,
-      username: row.username,
-      role: row.role,
+  const isSecure = new URL(c.req.url).protocol === 'https:';
+  const cookieOpts = `Path=/; HttpOnly; SameSite=Strict; Max-Age=604800${isSecure ? '; Secure' : ''}`; // 7 days
+  return c.json(
+    {
+      user: {
+        id: row.id,
+        username: row.username,
+        role: row.role,
+        theme_preference: row.theme_preference || 'light',
+      },
     },
-  });
+    200,
+    {
+      'Set-Cookie': `token=${token}; ${cookieOpts}`,
+    }
+  );
 });
 
 authRoutes.post('/setup', async (c) => {
@@ -83,4 +91,10 @@ authRoutes.post('/register', async (c) => {
     `INSERT INTO users (username, first_name, last_name, phone, email, password, role, status) VALUES (?, ?, ?, ?, ?, ?, 'Staff', 'Pending')`
   ).bind(username.trim(), first_name.trim(), last_name.trim(), phone.trim(), email.trim(), hashed).run();
   return c.json({ message: 'Registration submitted. Please wait for admin approval.' }, 201);
+});
+
+authRoutes.post('/logout', async (c) => {
+  const isSecure = new URL(c.req.url).protocol === 'https:';
+  const clearCookie = `token=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0${isSecure ? '; Secure' : ''}`;
+  return c.json({ ok: true }, 200, { 'Set-Cookie': clearCookie });
 });

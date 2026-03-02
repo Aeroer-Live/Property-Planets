@@ -74,7 +74,7 @@
   <script type="module">
     import { api } from '/js/api.js';
     import { loadUser, getCurrentUser, requireAuth, setTheme, applyStoredTheme } from '/js/auth.js';
-    if (!requireAuth()) throw new Error('redirect');
+    if (!(await requireAuth())) throw new Error('redirect');
     await loadUser();
     const user = getCurrentUser();
     if (user) document.getElementById('userName').textContent = user.username;

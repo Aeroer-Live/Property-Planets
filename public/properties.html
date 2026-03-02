@@ -113,7 +113,7 @@
   <script type="module">
     import { api } from '/js/api.js';
     import { loadUser, getCurrentUser, requireAuth, setTheme, applyStoredTheme } from '/js/auth.js';
-    if (!requireAuth()) throw new Error('redirect');
+    if (!(await requireAuth())) throw new Error('redirect');
     await loadUser();
     const user = getCurrentUser();
     if (user) document.getElementById('userName').textContent = user.username;
@@ -456,7 +456,6 @@
       importForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         if (!importFile?.files?.length) return;
-        const token = localStorage.getItem('token');
         const formData = new FormData();
         formData.append('file', importFile.files[0]);
         if (importBtn) importBtn.disabled = true;
@@ -464,7 +463,7 @@
         try {
           const res = await fetch('/api/properties/import', {
             method: 'POST',
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
+            credentials: 'include',
             body: formData,
           });
           const data = await res.json().catch(() => ({}));

@@ -1,4 +1,4 @@
-import { api, setToken, clearToken, isAuthenticated } from './api.js';
+import { api, clearToken } from './api.js';
 
 let currentUser = null;
 
@@ -6,14 +6,16 @@ export function getCurrentUser() {
   return currentUser;
 }
 
+export function isAuthenticated() {
+  return currentUser !== null;
+}
+
 export async function loadUser() {
-  if (!isAuthenticated()) return null;
   try {
     const data = await api('/api/users/me');
     currentUser = data;
     return data;
   } catch {
-    clearToken();
     currentUser = null;
     return null;
   }
@@ -24,7 +26,6 @@ export async function login(username, password) {
     method: 'POST',
     body: JSON.stringify({ username, password }),
   });
-  setToken(data.token);
   currentUser = data.user;
   return data;
 }
@@ -36,8 +37,10 @@ export async function register(fields) {
   });
 }
 
-export function logout() {
-  clearToken();
+export async function logout() {
+  try {
+    await api('/api/auth/logout', { method: 'POST' });
+  } catch (_) {}
   currentUser = null;
   window.location.href = '/login.html';
 }
@@ -52,12 +55,13 @@ export async function setTheme(theme) {
 }
 
 export function applyStoredTheme() {
-  const theme = currentUser?.theme_preference || localStorage.getItem('theme') || 'light';
+  const theme = currentUser?.theme_preference || 'light';
   document.documentElement.setAttribute('data-theme', theme);
 }
 
-export function requireAuth() {
-  if (!isAuthenticated()) {
+export async function requireAuth() {
+  const user = await loadUser();
+  if (!user) {
     window.location.href = '/login.html';
     return false;
   }
