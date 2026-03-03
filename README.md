@@ -1,6 +1,6 @@
 # Property Planets
 
-Property Rent Database Management System — web-based replacement for Excel/Sheets with role-based access, staff approval, and Cloudflare (Workers + D1).
+Property database management system — web-based replacement for Excel/Sheets with role-based access, staff approval, and Cloudflare (Workers + D1).
 
 ## Stack
 
@@ -17,7 +17,7 @@ Property Rent Database Management System — web-based replacement for Excel/She
 npm install
 ```
 
-### 2. Create D1 database (remote; optional for local)
+### 2. Create D1 database (optional for local dev)
 
 ```bash
 npm run db:create
@@ -25,10 +25,18 @@ npm run db:create
 
 Copy the returned `database_id` into `wrangler.toml` under `[[d1_databases]]` → `database_id`.
 
-### 3. Run migrations (local D1 for dev)
+### 3. Run migrations
+
+For local development (SQLite file in `.wrangler/`):
 
 ```bash
 npm run db:migrate:local
+```
+
+For a remote D1 database (e.g. before deploy), use:
+
+```bash
+npm run db:migrate
 ```
 
 ### 4. Start dev server
@@ -53,19 +61,25 @@ curl -X POST http://localhost:8787/api/auth/setup -H "Content-Type: application/
 
 | Script | Description |
 |--------|-------------|
-| `npm run dev` | Run Worker + assets locally |
+| `npm run dev` | Run Worker + static assets locally |
 | `npm run deploy` | Deploy to Cloudflare |
+| `npm run db:create` | Create D1 database (remote) |
 | `npm run db:migrate` | Apply migrations (remote D1) |
 | `npm run db:migrate:local` | Apply migrations (local D1) |
+| `npm run db:studio` | Open D1 CLI for local DB (execute commands) |
 
 ## Features
 
 - **Roles:** Admin (full access), Staff (view + add properties; no delete/user management)
 - **Staff registration:** Register → Pending → Admin approves or rejects
-- **Properties:** CRUD with server-side search (name, owner, phone) and filter by location (Malaysia state); pagination
-- **Audit:** Created By/At, Updated By/At on every property
+- **Properties**
+  - CRUD with **quick search** (single bar: name, owner, phone, IC)
+  - **Search Builder:** multiple conditions (column, operator, value), And/Or, add/remove rows
+  - **CSV import** (Admin): upload CSV with Property Name, Owner, Phone 01 (optional: Phone 02, IC Number). Recommended max **999 rows per file**; split larger files.
+  - **Export to Excel:** download current search results as `.xlsx` (up to 5,000 rows)
+  - Pagination; audit fields: Created By/At, Updated By/At
 - **Theme:** Light/dark mode; preference stored per user
-- **Screens:** Login, Register, Dashboard, Property list/add/edit, Pending approvals, User management (admin)
+- **Screens:** Login, Register, Dashboard, Property list/add/edit, Pending approvals, User management (Admin)
 
 ## Deployment to Cloudflare
 
