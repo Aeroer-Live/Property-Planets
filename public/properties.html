@@ -6,6 +6,7 @@
   <title>Properties – Property Planets</title>
   <link rel="icon" type="image/png" href="/images/logo.png">
   <link rel="stylesheet" href="/css/styles.css">
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js" crossorigin></script>
 </head>
 <body>
   <header class="app-header">
@@ -35,6 +36,7 @@
           <h2 class="section-title">Property List</h2>
         </div>
         <div class="properties-toolbar-actions">
+          <button type="button" class="btn btn-secondary btn-export" id="exportExcelBtn" title="Export current search results to Excel">Export to Excel</button>
           <a href="/property-add.html">+ Add Property</a>
         </div>
       </div>
@@ -463,6 +465,45 @@
       });
       searchBarEl.addEventListener('search', () => loadPage(1));
     }
+
+    document.getElementById('exportExcelBtn').addEventListener('click', async () => {
+      const filters = getFilters();
+      const params = new URLSearchParams();
+      const searchVal = (document.getElementById('searchBar')?.value || '').trim();
+      if (searchVal) params.set('search', searchVal);
+      if (filters.length) params.set('filters', encodeURIComponent(JSON.stringify(filters)));
+      try {
+        const data = await api(`/api/properties/export?${params}`);
+        const list = (data.properties || []).map(p => ({
+          'Property Name': p.property_name ?? '',
+          'Owner': p.property_owner_name ?? '',
+          'IC Number': p.ic_number ?? '',
+          'Phone 01': p.phone_01 ?? '',
+          'Phone 02': p.phone_02 ?? '',
+          'Created by': p.created_by_username ?? '',
+        }));
+        if (list.length === 0) {
+          alertEl.textContent = 'No data to export.';
+          alertEl.className = 'alert alert--warning';
+          return;
+        }
+        const XLSX = window.XLSX;
+        if (!XLSX) {
+          alertEl.textContent = 'Export library not loaded. Refresh the page and try again.';
+          alertEl.className = 'alert alert--danger';
+          return;
+        }
+        const ws = XLSX.utils.json_to_sheet(list);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Properties');
+        XLSX.writeFile(wb, 'properties.xlsx');
+        alertEl.textContent = `Exported ${list.length} propert${list.length === 1 ? 'y' : 'ies'} to Excel.`;
+        alertEl.className = 'alert alert--success';
+      } catch (e) {
+        alertEl.textContent = e instanceof Error ? e.message : 'Export failed.';
+        alertEl.className = 'alert alert--danger';
+      }
+    });
 
     const importFile = document.getElementById('importFile');
     const importBtn = document.getElementById('importBtn');

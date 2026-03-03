@@ -1368,6 +1368,16 @@ tr:hover td {
   margin-bottom: 0;
 }
 
+.properties-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.properties-toolbar-actions .btn-export {
+  flex-shrink: 0;
+}
+
 .properties-toolbar-actions a {
   display: inline-flex;
   align-items: center;

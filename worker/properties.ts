@@ -3,6 +3,8 @@ import { requireAuth, requireAdmin } from './middleware';
 import type { Env, Variables } from './types';
 
 const PAGE_SIZE = 20;
+/** Max rows returned by export endpoint (same filters/search as list). */
+const EXPORT_MAX = 5000;
 
 /** Allowed filter columns (property table or join). */
 const FILTER_COLUMNS = new Set(['property_name', 'property_owner_name', 'phone_01', 'phone_02', 'ic_number', 'created_by']);
@@ -143,6 +145,36 @@ properties.get('/count', async (c) => {
   const r = await db.prepare('SELECT COUNT(*) as total FROM properties').first();
   const total = Number((r as { total: number })?.total ?? 0);
   return c.json({ total });
+});
+
+properties.get('/export', async (c) => {
+  const db = c.env.DB;
+  const search = (c.req.query('search') || c.req.query('q') || '').trim();
+  const filtersParam = c.req.query('filters');
+  let filters: FilterRow[] = [];
+  try {
+    if (filtersParam) filters = JSON.parse(decodeURIComponent(filtersParam)) as FilterRow[];
+  } catch (_) {}
+  if (!Array.isArray(filters)) filters = [];
+
+  const { where: filterWhere, params: filterParams } = buildFilterClause(filters);
+  const searchPart = search
+    ? '(p.property_name LIKE ? OR p.property_owner_name LIKE ? OR p.phone_01 LIKE ? OR p.phone_02 LIKE ? OR p.ic_number LIKE ?)'
+    : '';
+  const searchParams = search ? [search, search, search, search, search].map((v) => `%${v}%`) : [];
+  const whereClause =
+    searchPart && filterWhere
+      ? 'WHERE ' + searchPart + ' AND ' + filterWhere.replace(/^WHERE\s+/, '')
+      : searchPart
+        ? 'WHERE ' + searchPart
+        : filterWhere;
+  const params = [...searchParams, ...filterParams];
+
+  const rows = await db.prepare(
+    `SELECT p.id, p.property_name, p.property_owner_name, p.phone_01, p.phone_02, p.ic_number, u.username as created_by_username FROM properties p LEFT JOIN users u ON p.created_by = u.id ${whereClause} ORDER BY p.updated_at DESC, p.created_at DESC LIMIT ?`
+  ).bind(...params, EXPORT_MAX).all();
+
+  return c.json({ properties: rows.results });
 });
 
 properties.get('/:id', async (c) => {
