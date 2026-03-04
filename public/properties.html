@@ -87,6 +87,11 @@
         </div>
       </section>
       <div id="alert"></div>
+      <div id="staffSearchPrompt" class="empty-state" style="display: none;" aria-live="polite">
+        <div class="empty-state-icon">🔍</div>
+        <h3>Search for properties</h3>
+        <p>Use the search bar or Search Builder above to find properties. No property data is shown until you search.</p>
+      </div>
       <div id="emptyState" class="empty-state" style="display: none;">
         <div class="empty-state-icon">📋</div>
         <h3>No properties yet</h3>
@@ -144,6 +149,7 @@
       const me = await api('/api/users/me');
       isAdmin = me.role === 'Admin';
     } catch (_) {}
+    const isStaff = !isAdmin;
 
     const importSection = document.getElementById('importSection');
     if (importSection) importSection.style.display = isAdmin ? 'block' : 'none';
@@ -318,7 +324,22 @@
       });
     }
 
+    function hasActiveSearch() {
+      const searchVal = (document.getElementById('searchBar')?.value || '').trim();
+      return searchVal.length > 0 || getFilters().length > 0;
+    }
+
     async function loadPage(page = 1) {
+      const staffPrompt = document.getElementById('staffSearchPrompt');
+      if (isStaff && !hasActiveSearch()) {
+        if (staffPrompt) staffPrompt.style.display = 'block';
+        document.getElementById('emptyState').style.display = 'none';
+        document.getElementById('tableWrap').style.display = 'none';
+        paginationEl.style.display = 'none';
+        return;
+      }
+      if (staffPrompt) staffPrompt.style.display = 'none';
+
       const filters = getFilters();
       const params = new URLSearchParams({ page: String(page) });
       const searchVal = (document.getElementById('searchBar')?.value || '').trim();
@@ -326,7 +347,23 @@
       if (filters.length) params.set('filters', encodeURIComponent(JSON.stringify(filters)));
       const data = await api(`/api/properties?${params}`);
       const hasResults = data.properties.length > 0;
-      document.getElementById('emptyState').style.display = hasResults ? 'none' : 'block';
+      const emptyEl = document.getElementById('emptyState');
+      if (hasResults) {
+        emptyEl.style.display = 'none';
+      } else {
+        emptyEl.style.display = 'block';
+        if (isStaff) {
+          emptyEl.querySelector('h3').textContent = 'No properties match your search';
+          emptyEl.querySelector('p').textContent = 'Try different search terms or filters.';
+          const addLink = emptyEl.querySelector('a.btn');
+          if (addLink) addLink.style.display = 'none';
+        } else {
+          emptyEl.querySelector('h3').textContent = 'No properties yet';
+          emptyEl.querySelector('p').textContent = 'Add your first property to get started.';
+          const addLink = emptyEl.querySelector('a.btn');
+          if (addLink) addLink.style.display = '';
+        }
+      }
       document.getElementById('tableWrap').style.display = hasResults ? 'block' : 'none';
       paginationEl.style.display = hasResults ? 'flex' : 'none';
 
@@ -467,6 +504,11 @@
     }
 
     document.getElementById('exportExcelBtn').addEventListener('click', async () => {
+      if (isStaff && !hasActiveSearch()) {
+        alertEl.textContent = 'Use the search bar or Search Builder to find properties, then export your results.';
+        alertEl.className = 'alert alert--warning';
+        return;
+      }
       const filters = getFilters();
       const params = new URLSearchParams();
       const searchVal = (document.getElementById('searchBar')?.value || '').trim();
