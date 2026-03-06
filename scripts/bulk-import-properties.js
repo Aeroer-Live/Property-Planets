@@ -34,7 +34,8 @@ function norm(s) {
 function parseCSV(text) {
   const rows = [];
   let row = [], cell = '', inQuotes = false;
-  const firstLine = text.split(/\r?\n)[0] ?? '';
+  const newline = text.indexOf('\r\n') !== -1 ? '\r\n' : '\n';
+  const firstLine = (text.split(newline)[0] ?? '').trim();
   const delim = firstLine.split(';').length > firstLine.split(',').length ? ';' : ',';
   for (let i = 0; i < text.length; i++) {
     const ch = text[i], next = text[i + 1];
