@@ -57,6 +57,22 @@ Alternatively via API:
 curl -X POST http://localhost:8787/api/auth/setup -H "Content-Type: application/json" -d "{\"username\":\"admin\",\"password\":\"your-secure-password\",\"email\":\"admin@example.com\"}"
 ```
 
+## Bulk import (millions of rows)
+
+Excel has a **~1.05 million row limit** per sheet. For **14 million or more** property records:
+
+1. **Split data** into multiple CSV files (e.g. 1 million rows each, or any size). Save from Excel as **CSV UTF-8** (File → Save As → CSV UTF-8).
+2. **Use the bulk import script** (connects directly to Neon; no browser/Worker timeout):
+   ```bash
+   node scripts/bulk-import-properties.js --conn "postgres://user:pass@host/db?sslmode=require" --created-by 1 --file part1.csv --file part2.csv
+   ```
+   Or point at a folder of CSVs:
+   ```bash
+   node scripts/bulk-import-properties.js --conn "postgres://..." --created-by 1 --dir ./my-csv-folder
+   ```
+   Get the **Neon connection string** from Neon Console → your project → Connection string. Use **created-by** = an existing user ID in your app (e.g. `1` for the first admin).
+3. **Web import** remains available for smaller batches (up to 50,000 rows per file) from the Properties page.
+
 ## Scripts
 
 | Script | Description |
@@ -67,6 +83,7 @@ curl -X POST http://localhost:8787/api/auth/setup -H "Content-Type: application/
 | `npm run db:migrate` | Apply migrations (remote D1) |
 | `npm run db:migrate:local` | Apply migrations (local D1) |
 | `npm run db:studio` | Open D1 CLI for local DB (execute commands) |
+| `node scripts/bulk-import-properties.js` | Bulk import from CSV into Neon (see above) |
 
 ## Features
 
@@ -75,7 +92,7 @@ curl -X POST http://localhost:8787/api/auth/setup -H "Content-Type: application/
 - **Properties**
   - CRUD with **quick search** (single bar: name, owner, phone, IC)
   - **Search Builder:** multiple conditions (column, operator, value), And/Or, add/remove rows
-  - **CSV import** (Admin): upload CSV with Property Name, Owner, Phone 01 (optional: Phone 02, IC Number). Recommended max **999 rows per file**; split larger files.
+  - **CSV import** (Admin): upload CSV with Property Name, Owner, Phone 01 (optional: Phone 02, IC Number). Up to **50,000 rows per file** in the web UI. For **millions of rows**, use the bulk import script (see below).
   - **Export to Excel:** download current search results as `.xlsx` (up to 5,000 rows)
   - Pagination; audit fields: Created By/At, Updated By/At
 - **Theme:** Light/dark mode; preference stored per user

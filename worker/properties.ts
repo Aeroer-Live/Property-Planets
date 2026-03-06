@@ -400,11 +400,36 @@ properties.post('/import', requireAdmin, async (c) => {
       error: 'File must have columns for Property Name, Owner (or Property Owner Name), and Phone 01 (or Phone).',
     }, 400);
   }
+  const WEB_IMPORT_MAX_ROWS = 50_000;
+  if (rows.length - 1 > WEB_IMPORT_MAX_ROWS) {
+    return c.json({
+      error: `File has ${rows.length - 1} data rows. Web import is limited to ${WEB_IMPORT_MAX_ROWS.toLocaleString()} rows per file. For millions of rows, use the bulk import script (see README or scripts/bulk-import-properties.js).`,
+    }, 400);
+  }
   const userId = c.get('userId');
   const uid = Number(userId);
+  const BATCH_SIZE = 500;
   const { imported, errors: errList } = await withClient(c.env, async (client) => {
     const errors: string[] = [];
     let imported = 0;
+    const batch: [string, string, string, string | null, string | null][] = [];
+    const flush = async () => {
+      if (batch.length === 0) return;
+      const values: (string | number)[] = [];
+      const placeholders: string[] = [];
+      let idx = 1;
+      for (const [pn, pon, p1, p2, ic] of batch) {
+        placeholders.push(`($${idx}, $${idx + 1}, $${idx + 2}, $${idx + 3}, $${idx + 4}, $${idx + 5})`);
+        values.push(pn, pon, p1, p2 ?? null, ic ?? null, uid);
+        idx += 6;
+      }
+      await client.query(
+        `INSERT INTO properties (property_name, property_owner_name, phone_01, phone_02, ic_number, created_by) VALUES ${placeholders.join(', ')}`,
+        values,
+      );
+      imported += batch.length;
+      batch.length = 0;
+    };
     for (let r = 1; r < rows.length; r++) {
       const row = rows[r];
       if (!row || !Array.isArray(row)) continue;
@@ -415,25 +440,19 @@ properties.post('/import', requireAdmin, async (c) => {
       const phone_02 = colIndex.phone_02 != null ? cell(colIndex.phone_02) : undefined;
       const ic_number = colIndex.ic_number != null ? cell(colIndex.ic_number) : undefined;
       if (!property_name || !property_owner_name || !phone_01) {
-        errors.push(`Row ${r + 1}: missing required field (property name, owner, or phone 01). Skipped.`);
+        errors.push(`Row ${r + 1}: missing required field. Skipped.`);
         continue;
       }
-      try {
-        await client.query(
-          `INSERT INTO properties (property_name, property_owner_name, phone_01, phone_02, ic_number, created_by)
-           VALUES ($1, $2, $3, $4, $5, $6)`,
-          [property_name, property_owner_name, phone_01, (phone_02 || '').trim() || null, (ic_number || '').trim() || null, uid],
-        );
-        imported++;
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : 'Insert failed';
-        if (msg.includes('location') && msg.includes('NOT NULL')) {
-          errors.push(`Row ${r + 1}: Database schema may have an old "location" column. Ensure NEON_FULL_SCHEMA.sql has been applied in Neon.`);
-        } else {
-          errors.push(`Row ${r + 1}: ${msg}`);
-        }
-      }
+      batch.push([
+        property_name,
+        property_owner_name,
+        phone_01,
+        (phone_02 || '').trim() || null,
+        (ic_number || '').trim() || null,
+      ]);
+      if (batch.length >= BATCH_SIZE) await flush();
     }
+    await flush();
     return { imported, errors: errors.slice(0, 50) };
   });
   return c.json({ imported, errors: errList });
