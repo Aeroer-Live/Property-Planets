@@ -27,6 +27,7 @@
       </div>
       <div class="auth-card">
         <div id="alert"></div>
+        <p id="sessionMessage" class="alert" style="display:none; background: var(--surface-elevated); color: var(--text-muted);">You were signed out or your session expired. Enter your username and password below to sign in again.</p>
         <form id="loginForm">
           <label for="username">Username</label>
           <input type="text" id="username" name="username" required autocomplete="username" placeholder="Enter your username">
@@ -45,26 +46,56 @@
   </main>
   <script type="module">
     import { loadUser } from '/js/auth.js';
-    const user = await loadUser();
-    if (user && user.status === 'Active') {
-      window.location.href = '/dashboard.html';
-      throw new Error('redirect');
+    import { setToken } from '/js/api.js';
+    const params = new URLSearchParams(window.location.search);
+    const fromSessionInvalid = params.get('session') === 'invalid';
+    if (fromSessionInvalid) {
+      document.getElementById('sessionMessage').style.display = 'block';
+    } else {
+      const user = await loadUser();
+      if (user && user.status === 'Active') {
+        window.location.replace('/dashboard.html');
+        throw new Error('redirect');
+      }
     }
 
     const form = document.getElementById('loginForm');
     const alertEl = document.getElementById('alert');
     function showError(msg) {
-      alertEl.innerHTML = `<div class="alert alert-error">${msg}</div>`;
+      alertEl.innerHTML = `<div class="alert alert-error">${escapeHtml(String(msg))}</div>`;
+    }
+    function escapeHtml(s) {
+      const div = document.createElement('div');
+      div.textContent = s;
+      return div.innerHTML;
     }
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       alertEl.innerHTML = '';
       const username = form.username.value.trim();
       const password = form.password.value;
+      if (!username || !password) {
+        showError('Please enter username and password.');
+        return;
+      }
       try {
         const { login } = await import('/js/auth.js');
-        await login(username, password);
-        window.location.href = '/dashboard.html';
+        const data = await login(username, password);
+        if (!data || !data.token) {
+          showError('Server did not return a session. Please try again.');
+          return;
+        }
+        setToken(data.token);
+        const meRes = await fetch('/api/users/me', {
+          credentials: 'include',
+          headers: { 'Authorization': `Bearer ${data.token}` },
+        });
+        if (!meRes.ok) {
+          const errBody = await meRes.json().catch(() => ({}));
+          showError(errBody.error || `Session check failed (${meRes.status}). Clear site data and try again.`);
+          return;
+        }
+        window.location.replace('/dashboard.html');
       } catch (err) {
         showError(err.message || 'Login failed');
       }

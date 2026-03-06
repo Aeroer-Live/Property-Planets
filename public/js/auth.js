@@ -17,6 +17,7 @@ export async function loadUser() {
     return data;
   } catch {
     currentUser = null;
+    clearToken();
     return null;
   }
 }
@@ -28,6 +29,8 @@ export async function login(username, password) {
   });
   if (data.token) setToken(data.token);
   currentUser = data.user;
+  // Ensure token is stored before navigation (avoids redirect loop on some browsers)
+  await new Promise((r) => setTimeout(r, 0));
   return data;
 }
 
@@ -64,7 +67,7 @@ export function applyStoredTheme() {
 export async function requireAuth() {
   const user = await loadUser();
   if (!user) {
-    window.location.href = '/login.html';
+    window.location.replace('/login.html?session=invalid');
     return false;
   }
   return true;

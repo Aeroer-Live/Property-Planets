@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
-import { requireAuth, requireAdmin, getJwtSecret } from './middleware';
-import { signJwt } from './lib/auth';
+import { requireAuth, requireAdmin } from './middleware';
+import { withClient } from './db';
 import type { Env, Variables } from './types';
 
 const users = new Hono<{ Bindings: Env; Variables: Variables }>();
@@ -9,12 +9,16 @@ users.use('*', requireAuth);
 
 users.get('/me', async (c) => {
   try {
-    const db = c.env.DB;
-    const id = c.get('userId');
-    if (!id) return c.json({ error: 'Unauthorized' }, 401);
-    const row = await db.prepare(
-      'SELECT id, username, first_name, last_name, phone, email, role, status, theme_preference, created_at FROM users WHERE id = ?'
-    ).bind(id).first();
+    const idRaw = c.get('userId');
+    if (!idRaw) return c.json({ error: 'Unauthorized' }, 401);
+    const id = String(idRaw);
+    const row = await withClient(c.env, async (client) => {
+      const r = await client.query(
+        'SELECT id, username, first_name, last_name, phone, email, role, status, theme_preference, created_at FROM users WHERE id = $1',
+        [id]
+      );
+      return r.rows[0];
+    });
     if (!row) return c.json({ error: 'User not found' }, 404);
     return c.json({
       id: row.id,
@@ -29,7 +33,6 @@ users.get('/me', async (c) => {
       created_at: row.created_at,
     });
   } catch (e) {
-    console.error('/api/users/me error:', e);
     return c.json({ error: 'Server error' }, 500);
   }
 });
@@ -41,66 +44,94 @@ users.patch('/me/theme', async (c) => {
     return c.json({ error: 'theme_preference must be "light" or "dark"' }, 400);
   }
   const id = c.get('userId');
-  const db = c.env.DB;
-  await db.prepare('UPDATE users SET theme_preference = ? WHERE id = ?').bind(theme, id).run();
+  await withClient(c.env, async (client) => {
+    await client.query('UPDATE users SET theme_preference = $1 WHERE id = $2', [theme, id]);
+  });
   return c.json({ theme_preference: theme });
 });
 
 users.get('/pending', requireAdmin, async (c) => {
-  const db = c.env.DB;
-  const rows = await db.prepare(
-    'SELECT id, username, first_name, last_name, phone, email, created_at FROM users WHERE status = ? ORDER BY created_at DESC'
-  ).bind('Pending').all();
-  return c.json({ users: rows.results });
+  const rows = await withClient(c.env, async (client) => {
+    const r = await client.query(
+      'SELECT id, username, first_name, last_name, phone, email, created_at FROM users WHERE status = $1 ORDER BY created_at DESC',
+      ['Pending']
+    );
+    return r.rows;
+  });
+  return c.json({ users: rows });
 });
 
 users.post('/:id/approve', requireAdmin, async (c) => {
   const id = c.req.param('id');
   const adminId = c.get('userId');
-  const db = c.env.DB;
-  const user = await db.prepare('SELECT id, status FROM users WHERE id = ?').bind(id).first();
-  if (!user) return c.json({ error: 'User not found' }, 404);
-  if (user.status !== 'Pending') return c.json({ error: 'User is not pending' }, 400);
-  await db.prepare(
-    'UPDATE users SET status = ?, approved_by = ?, approved_at = datetime(\'now\') WHERE id = ?'
-  ).bind('Active', adminId, id).run();
+  try {
+    await withClient(c.env, async (client) => {
+      const userRes = await client.query('SELECT id, status FROM users WHERE id = $1', [id]);
+      const user = userRes.rows[0];
+      if (!user) throw new Error('NOT_FOUND');
+      if (user.status !== 'Pending') throw new Error('NOT_PENDING');
+      await client.query(
+        'UPDATE users SET status = $1, approved_by = $2, approved_at = NOW() WHERE id = $3',
+        ['Active', adminId, id]
+      );
+    });
+  } catch (e) {
+    if (e instanceof Error && e.message === 'NOT_FOUND') return c.json({ error: 'User not found' }, 404);
+    if (e instanceof Error && e.message === 'NOT_PENDING') return c.json({ error: 'User is not pending' }, 400);
+    throw e;
+  }
   return c.json({ message: 'User approved' });
 });
 
 users.post('/:id/reject', requireAdmin, async (c) => {
   const id = c.req.param('id');
-  const db = c.env.DB;
-  const user = await db.prepare('SELECT id, status FROM users WHERE id = ?').bind(id).first();
-  if (!user) return c.json({ error: 'User not found' }, 404);
-  if (user.status !== 'Pending') return c.json({ error: 'User is not pending' }, 400);
-  await db.prepare('UPDATE users SET status = ? WHERE id = ?').bind('Rejected', id).run();
+  try {
+    await withClient(c.env, async (client) => {
+      const userRes = await client.query('SELECT id, status FROM users WHERE id = $1', [id]);
+      const user = userRes.rows[0];
+      if (!user) throw new Error('NOT_FOUND');
+      if (user.status !== 'Pending') throw new Error('NOT_PENDING');
+      await client.query('UPDATE users SET status = $1 WHERE id = $2', ['Rejected', id]);
+    });
+  } catch (e) {
+    if (e instanceof Error && e.message === 'NOT_FOUND') return c.json({ error: 'User not found' }, 404);
+    if (e instanceof Error && e.message === 'NOT_PENDING') return c.json({ error: 'User is not pending' }, 400);
+    throw e;
+  }
   return c.json({ message: 'User rejected' });
 });
 
 users.get('/count', requireAdmin, async (c) => {
-  const db = c.env.DB;
-  const totalResult = await db.prepare('SELECT COUNT(*) as total FROM users').first();
-  const staffResult = await db.prepare("SELECT COUNT(*) as total FROM users WHERE role = 'Staff'").first();
-  const total = Number((totalResult as { total: number })?.total ?? 0);
-  const staff = Number((staffResult as { total: number })?.total ?? 0);
+  const { total, staff } = await withClient(c.env, async (client) => {
+    const totalRes = await client.query('SELECT COUNT(*)::text as total FROM users');
+    const staffRes = await client.query("SELECT COUNT(*)::text as total FROM users WHERE role = 'Staff'");
+    return {
+      total: Number(totalRes.rows[0]?.total ?? 0),
+      staff: Number(staffRes.rows[0]?.total ?? 0),
+    };
+  });
   return c.json({ total, staff });
 });
 
 users.get('/', requireAdmin, async (c) => {
-  const db = c.env.DB;
-  const rows = await db.prepare(
-    'SELECT id, username, first_name, last_name, phone, email, role, status, theme_preference, created_at FROM users ORDER BY created_at DESC'
-  ).all();
-  return c.json({ users: rows.results });
+  const rows = await withClient(c.env, async (client) => {
+    const r = await client.query(
+      'SELECT id, username, first_name, last_name, phone, email, role, status, theme_preference, created_at FROM users ORDER BY created_at DESC'
+    );
+    return r.rows;
+  });
+  return c.json({ users: rows });
 });
 
 users.delete('/:id', requireAdmin, async (c) => {
   const id = c.req.param('id');
   const selfId = c.get('userId');
   if (id === selfId) return c.json({ error: 'Cannot delete yourself' }, 400);
-  const db = c.env.DB;
-  const r = await db.prepare('DELETE FROM users WHERE id = ?').bind(id).run();
-  if (r.meta.changes === 0) return c.json({ error: 'User not found' }, 404);
+  const deleted = await withClient(c.env, async (client) => {
+    const r = await client.query('DELETE FROM users WHERE id = $1', [id]);
+    return r.rowCount ?? 0;
+  });
+  if (deleted === 0) return c.json({ error: 'User not found' }, 404);
   return c.json({ message: 'User deleted' });
 });
 

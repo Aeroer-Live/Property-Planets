@@ -88,12 +88,18 @@ export async function signJwt(payload: { sub: string; role: string }, secret: st
   return `${message}.${sigB64}`;
 }
 
+function b64urlDecode(b64urlStr: string): string {
+  let b64 = b64urlStr.replace(/-/g, '+').replace(/_/g, '/');
+  while (b64.length % 4) b64 += '=';
+  return atob(b64);
+}
+
 export async function verifyJwt(token: string, secret: string): Promise<{ sub: string; role: string } | null> {
   try {
     const parts = token.split('.');
     if (parts.length !== 3) return null;
     const [header, payloadB64, sigB64] = parts;
-    const payloadJson = atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/'));
+    const payloadJson = b64urlDecode(payloadB64);
     const payload = JSON.parse(payloadJson);
     if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) return null;
     const enc = new TextEncoder();
@@ -105,7 +111,9 @@ export async function verifyJwt(token: string, secret: string): Promise<{ sub: s
       false,
       ['verify']
     );
-    const sigBuf = Uint8Array.from(atob(sigB64.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
+    const sigDecoded = b64urlDecode(sigB64);
+    const sigBuf = new Uint8Array(sigDecoded.length);
+    for (let i = 0; i < sigDecoded.length; i++) sigBuf[i] = sigDecoded.charCodeAt(i);
     const ok = await crypto.subtle.verify('HMAC', key, sigBuf, enc.encode(message));
     if (!ok) return null;
     return { sub: payload.sub, role: payload.role };
