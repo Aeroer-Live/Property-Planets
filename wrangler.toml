@@ -1,6 +1,7 @@
 name = "property-planets"
 main = "worker/index.ts"
-compatibility_date = "2024-12-01"
+compatibility_date = "2026-03-05"
+compatibility_flags = ["nodejs_compat"]
 
 # Static frontend (HTML/CSS/JS)
 assets = { directory = "public", binding = "ASSETS" }
@@ -13,3 +14,7 @@ database_id = "fa0667f2-6c63-405a-a30a-3c7ca52aae8c"
 
 # After first run of: npx wrangler d1 create property-planets-db
 # Replace YOUR_D1_DATABASE_ID above with the returned id.
+
+[[hyperdrive]]
+binding = "HYPERDRIVE"
+id = "6a8e8230c07842a4940d28433a4f3fdd"
