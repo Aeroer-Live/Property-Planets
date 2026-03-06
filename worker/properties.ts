@@ -306,34 +306,12 @@ properties.get('/', async (c) => {
 
 properties.get('/creators', async (c) => {
   const db = c.env.DB;
-  const pool = getPgPool(c.env);
-  if (!pool) {
-    const rows = await db.prepare(
-      'SELECT DISTINCT u.id, u.username FROM properties p JOIN users u ON p.created_by = u.id ORDER BY u.username'
-    ).all();
-    return c.json({ creators: rows.results as { id: number; username: string }[] });
-  }
-
-  let r;
-  try {
-    r = await pool.query<{ created_by: number }>(
-      'SELECT DISTINCT created_by FROM properties WHERE created_by IS NOT NULL ORDER BY created_by'
-    );
-  } catch (e) {
-    return c.json({ error: `Postgres query failed: ${getErrorMessage(e)}` }, 500);
-  }
-  const ids = r.rows.map((x) => Number(x.created_by)).filter((n) => Number.isFinite(n) && n > 0);
-  if (ids.length === 0) return c.json({ creators: [] });
-
-  const creators: { id: number; username: string }[] = [];
-  const chunkSize = 100;
-  for (let i = 0; i < ids.length; i += chunkSize) {
-    const chunk = ids.slice(i, i + chunkSize);
-    const placeholders = chunk.map(() => '?').join(',');
-    const u = await db.prepare(`SELECT id, username FROM users WHERE id IN (${placeholders}) ORDER BY username`).bind(...chunk).all();
-    creators.push(...(u.results as { id: number; username: string }[]));
-  }
-  return c.json({ creators });
+  // Keep this endpoint simple and reliable: always query D1 for creators.
+  // This avoids breaking the whole properties page if Postgres/Hyperdrive has issues.
+  const rows = await db.prepare(
+    'SELECT DISTINCT u.id, u.username FROM properties p JOIN users u ON p.created_by = u.id ORDER BY u.username'
+  ).all();
+  return c.json({ creators: rows.results as { id: number; username: string }[] });
 });
 
 properties.get('/count', async (c) => {
