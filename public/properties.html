@@ -144,12 +144,8 @@
     const searchBuilderRows = document.getElementById('searchBuilderRows');
     const searchBuilderCount = document.getElementById('searchBuilderCount');
     let creators = [];
-    let isAdmin = false;
-    try {
-      const me = await api('/api/users/me');
-      isAdmin = me.role === 'Admin';
-    } catch (_) {}
-    const isStaff = !isAdmin;
+    const isAdmin = user?.role === 'Admin';
+    const isStaff = user?.role === 'Staff';
 
     const importSection = document.getElementById('importSection');
     if (importSection) importSection.style.display = isAdmin ? 'block' : 'none';
@@ -453,7 +449,7 @@
             if (!confirm(`Delete ${ids.length} propert${ids.length === 1 ? 'y' : 'ies'}? This cannot be undone.`)) return;
             try {
               await api('/api/properties/bulk-delete', { method: 'POST', body: JSON.stringify({ ids }) });
-              loadPage(p);
+              safeLoadPage(p);
             } catch (e) {
               alertEl.innerHTML = `<div class="alert alert-error">${e.message}</div>`;
             }
@@ -462,6 +458,16 @@
         updateBulkBar();
       }
     }
+    async function safeLoadPage(page = 1) {
+      alertEl.innerHTML = '';
+      try {
+        await loadPage(page);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        alertEl.innerHTML = `<div class="alert alert-error">${msg}</div>`;
+      }
+    }
+
     function createBtn(text, enabled, fn) {
       const b = document.createElement('button');
       b.textContent = text;
@@ -484,13 +490,13 @@
       searchBuilderCount.textContent = String(rows.length + 1);
       updateSearchBuilderActions();
     });
-    document.getElementById('searchBtn').addEventListener('click', () => loadPage(1));
+    document.getElementById('searchBtn').addEventListener('click', () => safeLoadPage(1));
     document.getElementById('clearFiltersBtn').addEventListener('click', () => {
       searchBuilderRows.innerHTML = '';
       addConditionRow(0);
       searchBuilderCount.textContent = '1';
       updateSearchBuilderActions();
-      loadPage(1);
+      safeLoadPage(1);
     });
 
     let searchBarDebounce = null;
@@ -498,9 +504,9 @@
     if (searchBarEl) {
       searchBarEl.addEventListener('input', () => {
         clearTimeout(searchBarDebounce);
-        searchBarDebounce = setTimeout(() => loadPage(1), 300);
+        searchBarDebounce = setTimeout(() => safeLoadPage(1), 300);
       });
-      searchBarEl.addEventListener('search', () => loadPage(1));
+      searchBarEl.addEventListener('search', () => safeLoadPage(1));
     }
 
     document.getElementById('exportExcelBtn').addEventListener('click', async () => {
@@ -596,7 +602,7 @@
     }
 
     updateSearchBuilderActions();
-    await loadPage(1);
+    await safeLoadPage(1);
   </script>
   <footer class="app-footer">
     <div class="footer-inner">

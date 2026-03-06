@@ -72,11 +72,7 @@
 
     const form = document.getElementById('form');
     const alertEl = document.getElementById('alert');
-    let isAdmin = false;
-    try {
-      const me = await api('/api/users/me');
-      isAdmin = me.role === 'Admin';
-    } catch (_) {}
+    const isAdmin = user?.role === 'Admin';
 
     const prop = await api(`/api/properties/${id}`);
     document.getElementById('loading').style.display = 'none';

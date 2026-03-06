@@ -170,6 +170,21 @@ function buildPgFilterClause(filters: FilterRow[], startIndex = 1): { clause: st
   return { clause, params, nextIndex: idx };
 }
 
+function getErrorMessage(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  try {
+    return JSON.stringify(e);
+  } catch (_) {
+    return String(e);
+  }
+}
+
+function requireNumericUserId(userId: string): number {
+  const uid = Number(userId);
+  if (!Number.isFinite(uid) || uid <= 0) throw new Error('Invalid user id in session (expected numeric id). Please log out and log in again.');
+  return uid;
+}
+
 async function attachCreatedByUsernames(d1: D1Database, props: Array<Record<string, unknown>>): Promise<void> {
   const ids = Array.from(new Set(props.map((p) => Number(p.created_by)).filter((n) => Number.isFinite(n) && n > 0)));
   if (ids.length === 0) return;
@@ -194,7 +209,6 @@ properties.use('*', requireAuth);
 
 properties.get('/', async (c) => {
   const db = c.env.DB;
-  const pool = getPgPool(c.env);
   const page = Math.max(1, parseInt(c.req.query('page') || '1', 10));
   const search = (c.req.query('search') || c.req.query('q') || '').trim();
   const filtersParam = c.req.query('filters');
@@ -205,6 +219,13 @@ properties.get('/', async (c) => {
   if (!Array.isArray(filters)) filters = [];
 
   const offset = (page - 1) * PAGE_SIZE;
+
+  let pool: Pool | null = null;
+  try {
+    pool = getPgPool(c.env);
+  } catch (e) {
+    return c.json({ error: `Postgres pool init failed: ${getErrorMessage(e)}` }, 500);
+  }
 
   if (!pool) {
     const { where: filterWhere, params: filterParams } = buildFilterClause(filters);
@@ -250,31 +271,37 @@ properties.get('/', async (c) => {
     : '';
   const params: (string | number)[] = [...searchParams, ...filterParams];
 
-  const countRes = await pool.query<{ total: string }>(
-    `SELECT COUNT(*)::text as total FROM properties ${whereClause}`,
-    params,
-  );
-  const total = Number(countRes.rows?.[0]?.total ?? 0);
+  try {
+    let total = 0;
+    let results: Array<Record<string, unknown>> = [];
 
-  const listParams = [...params, PAGE_SIZE, offset];
-  const limitIdx = nextIndex;
-  const offsetIdx = nextIndex + 1;
-  const listRes = await pool.query(
-    `SELECT * FROM properties ${whereClause} ORDER BY updated_at DESC NULLS LAST, created_at DESC LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
-    listParams,
-  );
-  const results = listRes.rows as Array<Record<string, unknown>>;
-  await attachCreatedByUsernames(db, results);
+    const countRes = await pool!.query<{ total: string }>(
+      `SELECT COUNT(*)::text as total FROM properties ${whereClause}`,
+      params,
+    );
+    total = Number(countRes.rows?.[0]?.total ?? 0);
 
-  return c.json({
-    properties: results,
-    pagination: {
-      page,
-      page_size: PAGE_SIZE,
-      total,
-      total_pages: Math.ceil(total / PAGE_SIZE),
-    },
-  });
+    const listParams = [...params, PAGE_SIZE, offset];
+    const limitIdx = nextIndex;
+    const offsetIdx = nextIndex + 1;
+    const listRes = await pool!.query(
+      `SELECT * FROM properties ${whereClause} ORDER BY updated_at DESC NULLS LAST, created_at DESC LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+      listParams,
+    );
+    results = listRes.rows as Array<Record<string, unknown>>;
+    await attachCreatedByUsernames(db, results);
+    return c.json({
+      properties: results,
+      pagination: {
+        page,
+        page_size: PAGE_SIZE,
+        total,
+        total_pages: Math.ceil(total / PAGE_SIZE),
+      },
+    });
+  } catch (e) {
+    return c.json({ error: `Postgres query failed: ${getErrorMessage(e)}` }, 500);
+  }
 });
 
 properties.get('/creators', async (c) => {
@@ -287,9 +314,14 @@ properties.get('/creators', async (c) => {
     return c.json({ creators: rows.results as { id: number; username: string }[] });
   }
 
-  const r = await pool.query<{ created_by: number }>(
-    'SELECT DISTINCT created_by FROM properties WHERE created_by IS NOT NULL ORDER BY created_by'
-  );
+  let r;
+  try {
+    r = await pool.query<{ created_by: number }>(
+      'SELECT DISTINCT created_by FROM properties WHERE created_by IS NOT NULL ORDER BY created_by'
+    );
+  } catch (e) {
+    return c.json({ error: `Postgres query failed: ${getErrorMessage(e)}` }, 500);
+  }
   const ids = r.rows.map((x) => Number(x.created_by)).filter((n) => Number.isFinite(n) && n > 0);
   if (ids.length === 0) return c.json({ creators: [] });
 
@@ -312,9 +344,13 @@ properties.get('/count', async (c) => {
     const total = Number((r as { total: number })?.total ?? 0);
     return c.json({ total });
   }
-  const r = await pool.query<{ total: string }>('SELECT COUNT(*)::text as total FROM properties');
-  const total = Number(r.rows?.[0]?.total ?? 0);
-  return c.json({ total });
+  try {
+    const r = await pool.query<{ total: string }>('SELECT COUNT(*)::text as total FROM properties');
+    const total = Number(r.rows?.[0]?.total ?? 0);
+    return c.json({ total });
+  } catch (e) {
+    return c.json({ error: `Postgres query failed: ${getErrorMessage(e)}` }, 500);
+  }
 });
 
 properties.get('/export', async (c) => {
@@ -360,13 +396,17 @@ properties.get('/export', async (c) => {
   const params: (string | number)[] = [...searchParams, ...filterParams, EXPORT_MAX];
   const limitIdx = nextIndex;
 
-  const r = await pool.query(
-    `SELECT id, property_name, property_owner_name, phone_01, phone_02, ic_number, created_by FROM properties ${whereClause} ORDER BY updated_at DESC NULLS LAST, created_at DESC LIMIT $${limitIdx}`,
-    params,
-  );
-  const results = r.rows as Array<Record<string, unknown>>;
-  await attachCreatedByUsernames(db, results);
-  return c.json({ properties: results });
+  try {
+    const r = await pool.query(
+      `SELECT id, property_name, property_owner_name, phone_01, phone_02, ic_number, created_by FROM properties ${whereClause} ORDER BY updated_at DESC NULLS LAST, created_at DESC LIMIT $${limitIdx}`,
+      params,
+    );
+    const results = r.rows as Array<Record<string, unknown>>;
+    await attachCreatedByUsernames(db, results);
+    return c.json({ properties: results });
+  } catch (e) {
+    return c.json({ error: `Postgres query failed: ${getErrorMessage(e)}` }, 500);
+  }
 });
 
 properties.get('/:id', async (c) => {
@@ -382,11 +422,15 @@ properties.get('/:id', async (c) => {
   }
   const pid = Number(id);
   if (!Number.isFinite(pid) || pid <= 0) return c.json({ error: 'Invalid property id' }, 400);
-  const r = await pool.query('SELECT * FROM properties WHERE id = $1', [pid]);
-  const row = (r.rows?.[0] ?? null) as Record<string, unknown> | null;
-  if (!row) return c.json({ error: 'Property not found' }, 404);
-  await attachCreatedByUsernames(db, [row]);
-  return c.json(row);
+  try {
+    const r = await pool.query('SELECT * FROM properties WHERE id = $1', [pid]);
+    const row = (r.rows?.[0] ?? null) as Record<string, unknown> | null;
+    if (!row) return c.json({ error: 'Property not found' }, 404);
+    await attachCreatedByUsernames(db, [row]);
+    return c.json(row);
+  } catch (e) {
+    return c.json({ error: `Postgres query failed: ${getErrorMessage(e)}` }, 500);
+  }
 });
 
 properties.post('/', async (c) => {
@@ -411,16 +455,25 @@ properties.post('/', async (c) => {
     const row = await db.prepare('SELECT * FROM properties WHERE id = ?').bind(Number(r.meta.last_row_id)).first();
     return c.json(row, 201);
   }
-  const uid = Number(userId);
-  const r = await pool.query(
-    `INSERT INTO properties (property_name, property_owner_name, phone_01, phone_02, ic_number, created_by)
-     VALUES ($1, $2, $3, $4, $5, $6)
-     RETURNING *`,
-    [property_name.trim(), property_owner_name.trim(), phone_01.trim(), (phone_02 || '').trim() || null, (ic_number || '').trim() || null, uid],
-  );
-  const row = (r.rows?.[0] ?? null) as Record<string, unknown> | null;
-  if (row) await attachCreatedByUsernames(db, [row]);
-  return c.json(row, 201);
+  let uid: number;
+  try {
+    uid = requireNumericUserId(userId);
+  } catch (e) {
+    return c.json({ error: getErrorMessage(e) }, 400);
+  }
+  try {
+    const r = await pool.query(
+      `INSERT INTO properties (property_name, property_owner_name, phone_01, phone_02, ic_number, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING *`,
+      [property_name.trim(), property_owner_name.trim(), phone_01.trim(), (phone_02 || '').trim() || null, (ic_number || '').trim() || null, uid],
+    );
+    const row = (r.rows?.[0] ?? null) as Record<string, unknown> | null;
+    if (row) await attachCreatedByUsernames(db, [row]);
+    return c.json(row, 201);
+  } catch (e) {
+    return c.json({ error: `Postgres insert failed: ${getErrorMessage(e)}` }, 500);
+  }
 });
 
 properties.post('/bulk-delete', requireAdmin, async (c) => {
@@ -440,8 +493,12 @@ properties.post('/bulk-delete', requireAdmin, async (c) => {
     const r = await db.prepare(`DELETE FROM properties WHERE id IN (${placeholders})`).bind(...validIds).run();
     return c.json({ deleted: r.meta.changes ?? validIds.length });
   }
-  const r = await pool.query('DELETE FROM properties WHERE id = ANY($1::bigint[])', [validIds]);
-  return c.json({ deleted: r.rowCount ?? validIds.length });
+  try {
+    const r = await pool.query('DELETE FROM properties WHERE id = ANY($1::bigint[])', [validIds]);
+    return c.json({ deleted: r.rowCount ?? validIds.length });
+  } catch (e) {
+    return c.json({ error: `Postgres delete failed: ${getErrorMessage(e)}` }, 500);
+  }
 });
 
 /** Normalize Excel header for column mapping */
