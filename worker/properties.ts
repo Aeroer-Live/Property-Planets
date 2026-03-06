@@ -289,6 +289,19 @@ properties.post('/bulk-delete', requireAdmin, async (c) => {
   return c.json({ deleted });
 });
 
+/** Admin only: delete ALL properties. Requires body: { "confirm": "DELETE_ALL_PROPERTIES" } */
+properties.delete('/clear-all', requireAdmin, async (c) => {
+  const body = await c.req.json<{ confirm?: string }>().catch(() => ({}));
+  if (body?.confirm !== 'DELETE_ALL_PROPERTIES') {
+    return c.json({ error: 'Confirmation required. Send { "confirm": "DELETE_ALL_PROPERTIES" } in the request body.' }, 400);
+  }
+  const deleted = await withClient(c.env, async (client) => {
+    const r = await client.query('DELETE FROM properties');
+    return r.rowCount ?? 0;
+  });
+  return c.json({ deleted, message: `All property data removed (${deleted} records).` });
+});
+
 /** Normalize Excel header for column mapping */
 function norm(s: string): string {
   return String(s ?? '').trim().toLowerCase().replace(/\s+/g, ' ');

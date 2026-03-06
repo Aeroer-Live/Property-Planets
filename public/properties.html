@@ -61,6 +61,22 @@
           <div id="importResult" class="import-result" style="display: none;"></div>
         </div>
       </section>
+      <section class="import-section" id="clearAllSection" style="display: none;" aria-label="Clear all property data">
+        <div class="import-section-inner">
+          <div class="import-section-header">
+            <span class="import-section-icon" aria-hidden="true">🗑️</span>
+            <div>
+              <h3 class="import-section-title">Clear all property data</h3>
+              <p class="import-section-desc">Permanently remove every property record from the database. Use this to delete example or test data. Type <strong>DELETE_ALL_PROPERTIES</strong> below to confirm, then click the button.</p>
+            </div>
+          </div>
+          <div class="import-form" style="display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem;">
+            <input type="text" id="clearAllConfirm" class="search-bar-input" placeholder="Type DELETE_ALL_PROPERTIES to confirm" style="max-width: 320px;" autocomplete="off">
+            <button type="button" class="btn btn-danger" id="clearAllBtn" disabled>Clear all property data</button>
+          </div>
+          <div id="clearAllResult" class="import-result" style="display: none;"></div>
+        </div>
+      </section>
       <section class="search-builder" id="searchBuilder" aria-label="Search builder">
         <div class="search-builder-header">
           <div class="search-builder-header-inner">
@@ -149,6 +165,8 @@
 
     const importSection = document.getElementById('importSection');
     if (importSection) importSection.style.display = isAdmin ? 'block' : 'none';
+    const clearAllSection = document.getElementById('clearAllSection');
+    if (clearAllSection) clearAllSection.style.display = isAdmin ? 'block' : 'none';
 
     const COLUMNS = [
       { value: 'property_name', label: 'Property Name' },
@@ -597,6 +615,38 @@
           if (importBtn) importBtn.disabled = false;
         } finally {
           if (importBtn && importFile.files?.length) importBtn.disabled = false;
+        }
+      });
+    }
+
+    const clearAllConfirm = document.getElementById('clearAllConfirm');
+    const clearAllBtn = document.getElementById('clearAllBtn');
+    const clearAllResult = document.getElementById('clearAllResult');
+    const CONFIRM_PHRASE = 'DELETE_ALL_PROPERTIES';
+    if (clearAllConfirm) clearAllConfirm.addEventListener('input', () => {
+      if (clearAllBtn) clearAllBtn.disabled = clearAllConfirm.value.trim() !== CONFIRM_PHRASE;
+    });
+    if (clearAllBtn) {
+      clearAllBtn.addEventListener('click', async () => {
+        if (clearAllConfirm?.value.trim() !== CONFIRM_PHRASE) return;
+        clearAllBtn.disabled = true;
+        clearAllResult.style.display = 'none';
+        try {
+          const data = await api('/api/properties/clear-all', {
+            method: 'DELETE',
+            body: JSON.stringify({ confirm: CONFIRM_PHRASE }),
+          });
+          clearAllResult.style.display = 'block';
+          clearAllResult.className = 'import-result import-result--success';
+          clearAllResult.textContent = data.message || `Removed ${data.deleted ?? 0} propert${(data.deleted ?? 0) === 1 ? 'y' : 'ies'}.`;
+          clearAllConfirm.value = '';
+          loadPage(1);
+        } catch (err) {
+          clearAllResult.style.display = 'block';
+          clearAllResult.className = 'import-result import-result--error';
+          clearAllResult.textContent = err.message || 'Clear failed';
+        } finally {
+          clearAllBtn.disabled = true;
         }
       });
     }
