@@ -123,11 +123,11 @@
           <thead>
             <tr>
               <th class="th-select" id="thSelect" style="display: none;"><input type="checkbox" id="selectAll" aria-label="Select all on this page"></th>
-              <th>Property Name</th>
               <th>Owner</th>
-              <th>IC Number</th>
               <th>Phone 01</th>
               <th>Phone 02</th>
+              <th>IC Number</th>
+              <th>Property Name</th>
               <th>Created by</th>
               <th>Actions</th>
             </tr>
@@ -387,11 +387,11 @@
       tbody.innerHTML = data.properties.map(p => `
         <tr>
           ${isAdmin ? `<td class="td-select"><input type="checkbox" class="row-select" data-id="${p.id}" aria-label="Select ${escapeHtml(p.property_name)}"></td>` : ''}
-          <td><strong>${escapeHtml(p.property_name)}</strong></td>
           <td>${escapeHtml(p.property_owner_name)}</td>
-          <td>${escapeHtml(p.ic_number || '—')}</td>
           <td>${escapeHtml(p.phone_01)}</td>
           <td>${escapeHtml(p.phone_02 || '—')}</td>
+          <td>${escapeHtml(p.ic_number || '—')}</td>
+          <td><strong>${escapeHtml(p.property_name)}</strong></td>
           <td>${escapeHtml(p.created_by_username || '—')}</td>
           <td>
             <div class="table-actions">
@@ -541,11 +541,11 @@
       try {
         const data = await api(`/api/properties/export?${params}`);
         const list = (data.properties || []).map(p => ({
-          'Property Name': p.property_name ?? '',
           'Owner': p.property_owner_name ?? '',
-          'IC Number': p.ic_number ?? '',
           'Phone 01': p.phone_01 ?? '',
           'Phone 02': p.phone_02 ?? '',
+          'IC Number': p.ic_number ?? '',
+          'Property Name': p.property_name ?? '',
           'Created by': p.created_by_username ?? '',
         }));
         if (list.length === 0) {

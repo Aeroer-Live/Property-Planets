@@ -29,11 +29,13 @@
     </div>
   </header>
   <main class="container">
-    <div class="card">
-      <h2>User Management</h2>
-      <p style="color: var(--text-muted); margin-bottom: 1rem;">Admins can edit a staff user's password, email, and phone via the Edit button.</p>
+    <div class="card card--users">
+      <div class="card-header">
+        <h2>User Management</h2>
+        <p class="card-description">Admins can edit a staff user's password, email, and phone via the Edit button.</p>
+      </div>
       <div id="alert"></div>
-      <div class="table-wrap">
+      <div class="users-table-wrap">
         <table>
           <thead>
             <tr>
@@ -66,7 +68,7 @@
           <input type="email" id="editUserEmail" name="email" required>
           <label for="editUserPhone">Phone</label>
           <input type="tel" id="editUserPhone" name="phone" required>
-          <div class="form-actions" style="margin-top: 1rem;">
+          <div class="form-actions">
             <button type="button" class="btn btn-secondary" data-close="editUserModal">Cancel</button>
             <button type="submit" class="btn btn-primary">Save changes</button>
           </div>
@@ -95,21 +97,42 @@
     const alertEl = document.getElementById('alert');
     const me = await api('/api/users/me');
 
+    function formatDate(iso) {
+      if (!iso) return '—';
+      const d = new Date(iso);
+      return isNaN(d.getTime()) ? iso : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+    function roleBadge(role) {
+      const r = (role || '').toLowerCase();
+      const cls = r === 'admin' ? 'badge badge--role-admin' : 'badge badge--role-staff';
+      return `<span class="${cls}">${escapeHtml(role || '—')}</span>`;
+    }
+    function statusBadge(status) {
+      const s = (status || '').toLowerCase();
+      const cls = s === 'active' ? 'badge badge--success' : 'badge badge--muted';
+      return `<span class="${cls}">${escapeHtml(status || '—')}</span>`;
+    }
+    function themeBadge(theme) {
+      return `<span class="badge badge--theme">${escapeHtml((theme || '—').toLowerCase())}</span>`;
+    }
+
     const { users } = await api('/api/users');
     const usersById = Object.fromEntries(users.map(u => [String(u.id), u]));
     tbody.innerHTML = users.map(u => `
       <tr data-id="${u.id}">
-        <td>${escapeHtml(u.username)}</td>
+        <td class="td-username">${escapeHtml(u.username)}</td>
         <td>${escapeHtml(u.first_name + ' ' + u.last_name)}</td>
         <td>${escapeHtml(u.email)}</td>
         <td>${escapeHtml(u.phone || '—')}</td>
-        <td>${escapeHtml(u.role)}</td>
-        <td>${escapeHtml(u.status)}</td>
-        <td>${escapeHtml(u.theme_preference)}</td>
-        <td>${escapeHtml(u.created_at)}</td>
+        <td>${roleBadge(u.role)}</td>
+        <td>${statusBadge(u.status)}</td>
+        <td>${themeBadge(u.theme_preference)}</td>
+        <td>${formatDate(u.created_at)}</td>
         <td>
-          <button type="button" class="btn btn-secondary btn-sm btn-edit-user" data-id="${u.id}">Edit</button>
-          ${u.id !== me.id ? ` <button type="button" class="btn btn-danger btn-sm btn-delete-user" data-id="${u.id}">Delete</button>` : ''}
+          <div class="table-actions">
+            <button type="button" class="btn btn-secondary btn-sm btn-edit-user" data-id="${u.id}">Edit</button>
+            ${u.id !== me.id ? `<button type="button" class="btn btn-danger btn-sm btn-delete-user" data-id="${u.id}">Delete</button>` : ''}
+          </div>
         </td>
       </tr>
     `).join('');
