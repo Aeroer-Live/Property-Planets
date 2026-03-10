@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { requireAuth, requireAdmin } from './middleware';
 import { withClient } from './db';
+import { hashPassword } from './lib/auth';
 import type { Env, Variables } from './types';
 
 const users = new Hono<{ Bindings: Env; Variables: Variables }>();
@@ -121,6 +122,61 @@ users.get('/', requireAdmin, async (c) => {
     return r.rows;
   });
   return c.json({ users: rows });
+});
+
+/** Admin only: update a user's password, email, and/or phone. */
+users.patch('/:id', requireAdmin, async (c) => {
+  const id = c.req.param('id');
+  const body = await c.req.json<{ password?: string; email?: string; phone?: string }>().catch(() => ({}));
+  const password = typeof body?.password === 'string' ? body.password.trim() : undefined;
+  const email = typeof body?.email === 'string' ? body.email.trim() : undefined;
+  const phone = typeof body?.phone === 'string' ? body.phone.trim() : undefined;
+
+  if (!password && email === undefined && phone === undefined) {
+    return c.json({ error: 'Provide at least one of: password, email, phone' }, 400);
+  }
+  if (password && password.length < 8) {
+    return c.json({ error: 'Password must be at least 8 characters' }, 400);
+  }
+  if (email !== undefined && !email) {
+    return c.json({ error: 'Email cannot be empty' }, 400);
+  }
+
+  try {
+    await withClient(c.env, async (client) => {
+      const userRes = await client.query('SELECT id, email FROM users WHERE id = $1', [id]);
+      const user = userRes.rows[0];
+      if (!user) throw new Error('NOT_FOUND');
+      if (email !== undefined && email !== (user.email as string)) {
+        const existing = await client.query('SELECT id FROM users WHERE email = $1 AND id != $2', [email, id]);
+        if (existing.rows.length > 0) throw new Error('EMAIL_TAKEN');
+      }
+      const updates: string[] = [];
+      const values: (string | number)[] = [];
+      let idx = 1;
+      if (password) {
+        const hashed = await hashPassword(password);
+        updates.push(`password = $${idx++}`);
+        values.push(hashed);
+      }
+      if (email !== undefined) {
+        updates.push(`email = $${idx++}`);
+        values.push(email);
+      }
+      if (phone !== undefined) {
+        updates.push(`phone = $${idx++}`);
+        values.push(phone);
+      }
+      if (updates.length === 0) return;
+      values.push(id);
+      await client.query(`UPDATE users SET ${updates.join(', ')} WHERE id = $${idx}`, values);
+    });
+  } catch (e) {
+    if (e instanceof Error && e.message === 'NOT_FOUND') return c.json({ error: 'User not found' }, 404);
+    if (e instanceof Error && e.message === 'EMAIL_TAKEN') return c.json({ error: 'Email already in use by another user' }, 409);
+    throw e;
+  }
+  return c.json({ message: 'User updated' });
 });
 
 users.delete('/:id', requireAdmin, async (c) => {

@@ -31,6 +31,7 @@
   <main class="container">
     <div class="card">
       <h2>User Management</h2>
+      <p style="color: var(--text-muted); margin-bottom: 1rem;">Admins can edit a staff user's password, email, and phone via the Edit button.</p>
       <div id="alert"></div>
       <div class="table-wrap">
         <table>
@@ -39,6 +40,7 @@
               <th>Username</th>
               <th>Name</th>
               <th>Email</th>
+              <th>Phone</th>
               <th>Role</th>
               <th>Status</th>
               <th>Theme</th>
@@ -48,6 +50,27 @@
           </thead>
           <tbody id="tbody"></tbody>
         </table>
+      </div>
+    </div>
+
+    <div id="editUserModal" class="modal" style="display: none;" role="dialog" aria-labelledby="editUserModalTitle" aria-modal="true">
+      <div class="modal-backdrop" data-close="editUserModal"></div>
+      <div class="modal-content card">
+        <h2 id="editUserModalTitle">Edit user</h2>
+        <form id="editUserForm">
+          <input type="hidden" id="editUserId" name="id">
+          <p id="editUserUsername" style="color: var(--text-muted); margin-bottom: 1rem;"></p>
+          <label for="editUserPassword">New password (leave blank to keep current)</label>
+          <input type="password" id="editUserPassword" name="password" minlength="8" placeholder="Min 8 characters" autocomplete="new-password">
+          <label for="editUserEmail">Email</label>
+          <input type="email" id="editUserEmail" name="email" required>
+          <label for="editUserPhone">Phone</label>
+          <input type="tel" id="editUserPhone" name="phone" required>
+          <div class="form-actions" style="margin-top: 1rem;">
+            <button type="button" class="btn btn-secondary" data-close="editUserModal">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save changes</button>
+          </div>
+        </form>
       </div>
     </div>
   </main>
@@ -73,21 +96,87 @@
     const me = await api('/api/users/me');
 
     const { users } = await api('/api/users');
+    const usersById = Object.fromEntries(users.map(u => [String(u.id), u]));
     tbody.innerHTML = users.map(u => `
-      <tr>
+      <tr data-id="${u.id}">
         <td>${escapeHtml(u.username)}</td>
         <td>${escapeHtml(u.first_name + ' ' + u.last_name)}</td>
         <td>${escapeHtml(u.email)}</td>
+        <td>${escapeHtml(u.phone || '—')}</td>
         <td>${escapeHtml(u.role)}</td>
         <td>${escapeHtml(u.status)}</td>
         <td>${escapeHtml(u.theme_preference)}</td>
         <td>${escapeHtml(u.created_at)}</td>
         <td>
-          ${u.id !== me.id ? `<button type="button" class="btn btn-danger btn-sm" data-id="${u.id}">Delete</button>` : ''}
+          <button type="button" class="btn btn-secondary btn-sm btn-edit-user" data-id="${u.id}">Edit</button>
+          ${u.id !== me.id ? ` <button type="button" class="btn btn-danger btn-sm btn-delete-user" data-id="${u.id}">Delete</button>` : ''}
         </td>
       </tr>
     `).join('');
-    tbody.querySelectorAll('button[data-id]').forEach(btn => {
+
+    const editModal = document.getElementById('editUserModal');
+    const editForm = document.getElementById('editUserForm');
+    const editUserId = document.getElementById('editUserId');
+    const editUserUsername = document.getElementById('editUserUsername');
+    const editUserPassword = document.getElementById('editUserPassword');
+    const editUserEmail = document.getElementById('editUserEmail');
+    const editUserPhone = document.getElementById('editUserPhone');
+
+    function openEditModal(tr) {
+      if (!tr || !editModal) return;
+      const id = tr.dataset.id;
+      const u = usersById[id];
+      if (!u) return;
+      if (editUserId) editUserId.value = id;
+      if (editUserUsername) editUserUsername.textContent = 'Editing: ' + u.username;
+      if (editUserEmail) editUserEmail.value = u.email || '';
+      if (editUserPhone) editUserPhone.value = u.phone || '';
+      if (editUserPassword) editUserPassword.value = '';
+      editModal.style.display = 'flex';
+      if (editUserEmail) editUserEmail.focus();
+    }
+    function closeEditModal() {
+      if (editModal) editModal.style.display = 'none';
+    }
+    editModal?.querySelectorAll('[data-close="editUserModal"]').forEach(el => {
+      el.addEventListener('click', closeEditModal);
+    });
+    tbody.querySelectorAll('.btn-edit-user').forEach(btn => {
+      btn.addEventListener('click', () => openEditModal(btn.closest('tr')));
+    });
+    editForm?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = editUserId?.value;
+      if (!id) return;
+      const email = editUserEmail?.value?.trim();
+      const phone = editUserPhone?.value?.trim();
+      const password = editUserPassword?.value?.trim();
+      if (!email) {
+        alertEl.innerHTML = '<div class="alert alert-error">Email is required.</div>';
+        return;
+      }
+      try {
+        const body = { email, phone };
+        if (password) body.password = password;
+        await api(`/api/users/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
+        closeEditModal();
+        if (usersById[id]) {
+          usersById[id].email = email;
+          usersById[id].phone = phone || '';
+        }
+        const tr = tbody.querySelector(`tr[data-id="${id}"]`);
+        if (tr) {
+          tr.querySelector('td:nth-child(3)').textContent = email;
+          tr.querySelector('td:nth-child(4)').textContent = phone || '—';
+        }
+        alertEl.innerHTML = '<div class="alert alert-success">User updated.</div>';
+        setTimeout(() => { alertEl.innerHTML = ''; }, 3000);
+      } catch (err) {
+        alertEl.innerHTML = '<div class="alert alert-error">' + escapeHtml(err.message) + '</div>';
+      }
+    });
+
+    tbody.querySelectorAll('.btn-delete-user').forEach(btn => {
       btn.onclick = async () => {
         if (!confirm('Delete this user?')) return;
         try {
@@ -96,7 +185,7 @@
           alertEl.innerHTML = '<div class="alert alert-success">User deleted.</div>';
           setTimeout(() => { alertEl.innerHTML = ''; }, 2000);
         } catch (e) {
-          alertEl.innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+          alertEl.innerHTML = `<div class="alert alert-error">${escapeHtml(e.message)}</div>`;
         }
       };
     });
