@@ -160,8 +160,12 @@
     const searchBuilderRows = document.getElementById('searchBuilderRows');
     const searchBuilderCount = document.getElementById('searchBuilderCount');
     let creators = [];
+    let creatorsLoaded = false;
+    let creatorsPromise = null;
     const isAdmin = user?.role === 'Admin';
     const isStaff = user?.role === 'Staff';
+    let activeLoadController = null;
+    let latestLoadSeq = 0;
 
     const importSection = document.getElementById('importSection');
     if (importSection) importSection.style.display = isAdmin ? 'block' : 'none';
@@ -215,9 +219,19 @@
       }
     }
 
-    async function loadCreators() {
-      const res = await api('/api/properties/creators');
-      creators = res.creators || [];
+    async function ensureCreatorsLoaded() {
+      if (creatorsLoaded) return creators;
+      if (creatorsPromise) return creatorsPromise;
+      creatorsPromise = api('/api/properties/creators')
+        .then((res) => {
+          creators = res.creators || [];
+          creatorsLoaded = true;
+          return creators;
+        })
+        .finally(() => {
+          creatorsPromise = null;
+        });
+      return creatorsPromise;
     }
 
     function updateRowValueCell(rowEl, column, operator) {
@@ -229,6 +243,25 @@
         return;
       }
       if (isCreatedBy) {
+        if (!creatorsLoaded) {
+          cell.innerHTML = `<select class="search-builder-value-select" data-value aria-label="Value" disabled>
+            <option value="">Loading creators…</option>
+          </select>`;
+          ensureCreatorsLoaded().then(() => {
+            if (!rowEl.isConnected) return;
+            const currentColumn = rowEl.querySelector('[data-column]')?.value;
+            const currentOperator = rowEl.querySelector('[data-operator]')?.value;
+            if (currentColumn !== 'created_by' || !VALUE_OPS.has(currentOperator || '')) return;
+            updateRowValueCell(rowEl, currentColumn, currentOperator || 'equals');
+            attachAutoSearchToRow(rowEl);
+          }).catch(() => {
+            if (!rowEl.isConnected) return;
+            cell.innerHTML = `<select class="search-builder-value-select" data-value aria-label="Value" disabled>
+              <option value="">Failed to load creators</option>
+            </select>`;
+          });
+          return;
+        }
         cell.innerHTML = `<select class="search-builder-value-select" data-value aria-label="Value">
           <option value="">Select creator</option>
           ${creators.map(c => `<option value="${c.id}">${escapeHtml(c.username)}</option>`).join('')}
@@ -359,7 +392,14 @@
       const searchVal = (document.getElementById('searchBar')?.value || '').trim();
       if (searchVal) params.set('search', searchVal);
       if (filters.length) params.set('filters', encodeURIComponent(JSON.stringify(filters)));
-      const data = await api(`/api/properties?${params}`);
+      if (activeLoadController) {
+        activeLoadController.abort();
+      }
+      const controller = new AbortController();
+      activeLoadController = controller;
+      const seq = ++latestLoadSeq;
+      const data = await api(`/api/properties?${params}`, { signal: controller.signal });
+      if (seq !== latestLoadSeq) return;
       const hasResults = data.properties.length > 0;
       const emptyEl = document.getElementById('emptyState');
       if (hasResults) {
@@ -481,6 +521,7 @@
       try {
         await loadPage(page);
       } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') return;
         const msg = err instanceof Error ? err.message : String(err);
         alertEl.innerHTML = `<div class="alert alert-error">${msg}</div>`;
       }
@@ -498,7 +539,6 @@
       div.textContent = s;
       return div.innerHTML;
     }
-    await loadCreators();
     addConditionRow(0);
     searchBuilderCount.textContent = '1';
 
