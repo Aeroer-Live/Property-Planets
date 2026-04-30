@@ -195,7 +195,11 @@
     const VALUE_OPS = new Set(['equals', 'not_equals', 'starts_with', 'does_not_start_with', 'contains', 'does_not_contain', 'ends_with', 'does_not_end_with']);
 
     const SEARCH_DEBOUNCE_MS = 380;
+    const QUICK_SEARCH_MIN_CHARS = 2;
+    const QUERY_CACHE_TTL_MS = 15000;
+    const QUERY_CACHE_MAX_ITEMS = 40;
     let searchDebounceTimer = null;
+    const queryCache = new Map();
 
     function runSearch() {
       clearTimeout(searchDebounceTimer);
@@ -376,6 +380,34 @@
       return searchVal.length > 0 || getFilters().length > 0;
     }
 
+    function canRunQuickSearch(searchVal, filters) {
+      if (filters.length > 0) return true;
+      if (!searchVal) return true;
+      return searchVal.length >= QUICK_SEARCH_MIN_CHARS;
+    }
+
+    function cacheGet(key) {
+      const hit = queryCache.get(key);
+      if (!hit) return null;
+      if (Date.now() - hit.ts > QUERY_CACHE_TTL_MS) {
+        queryCache.delete(key);
+        return null;
+      }
+      return hit.data;
+    }
+
+    function cacheSet(key, data) {
+      if (queryCache.size >= QUERY_CACHE_MAX_ITEMS) {
+        const firstKey = queryCache.keys().next().value;
+        if (firstKey) queryCache.delete(firstKey);
+      }
+      queryCache.set(key, { ts: Date.now(), data });
+    }
+
+    function clearQueryCache() {
+      queryCache.clear();
+    }
+
     async function loadPage(page = 1) {
       const staffPrompt = document.getElementById('staffSearchPrompt');
       if (isStaff && !hasActiveSearch()) {
@@ -388,10 +420,28 @@
       if (staffPrompt) staffPrompt.style.display = 'none';
 
       const filters = getFilters();
-      const params = new URLSearchParams({ page: String(page) });
       const searchVal = (document.getElementById('searchBar')?.value || '').trim();
+      if (!canRunQuickSearch(searchVal, filters)) {
+        const minimumNotice = document.getElementById('staffSearchPrompt');
+        if (minimumNotice) {
+          minimumNotice.style.display = 'block';
+          minimumNotice.querySelector('h3').textContent = `Type at least ${QUICK_SEARCH_MIN_CHARS} characters`;
+          minimumNotice.querySelector('p').textContent = `Quick search starts from ${QUICK_SEARCH_MIN_CHARS} characters to reduce heavy queries.`;
+        }
+        document.getElementById('emptyState').style.display = 'none';
+        document.getElementById('tableWrap').style.display = 'none';
+        paginationEl.style.display = 'none';
+        return;
+      }
+      const params = new URLSearchParams({ page: String(page) });
       if (searchVal) params.set('search', searchVal);
       if (filters.length) params.set('filters', encodeURIComponent(JSON.stringify(filters)));
+      const cacheKey = params.toString();
+      const cached = cacheGet(cacheKey);
+      if (cached) {
+        renderPropertiesPage(cached, page);
+        return;
+      }
       if (activeLoadController) {
         activeLoadController.abort();
       }
@@ -400,6 +450,11 @@
       const seq = ++latestLoadSeq;
       const data = await api(`/api/properties?${params}`, { signal: controller.signal });
       if (seq !== latestLoadSeq) return;
+      cacheSet(cacheKey, data);
+      renderPropertiesPage(data, page);
+    }
+
+    function renderPropertiesPage(data, page) {
       const hasResults = data.properties.length > 0;
       const emptyEl = document.getElementById('emptyState');
       if (hasResults) {
@@ -463,6 +518,7 @@
           if (!confirm('Delete this property?')) return;
           try {
             await api(`/api/properties/${btn.dataset.id}`, { method: 'DELETE' });
+            clearQueryCache();
             loadPage(p);
           } catch (e) {
             alertEl.innerHTML = `<div class="alert alert-error">${e.message}</div>`;
@@ -507,6 +563,7 @@
             if (!confirm(`Delete ${ids.length} propert${ids.length === 1 ? 'y' : 'ies'}? This cannot be undone.`)) return;
             try {
               await api('/api/properties/bulk-delete', { method: 'POST', body: JSON.stringify({ ids }) });
+              clearQueryCache();
               safeLoadPage(p);
             } catch (e) {
               alertEl.innerHTML = `<div class="alert alert-error">${e.message}</div>`;
@@ -647,6 +704,7 @@
           }
           importFile.value = '';
           if (importBtn) importBtn.disabled = true;
+          clearQueryCache();
           loadPage(1);
         } catch (err) {
           importResult.style.display = 'block';
@@ -680,6 +738,7 @@
           clearAllResult.className = 'import-result import-result--success';
           clearAllResult.textContent = data.message || `Removed ${data.deleted ?? 0} propert${(data.deleted ?? 0) === 1 ? 'y' : 'ies'}.`;
           clearAllConfirm.value = '';
+          clearQueryCache();
           loadPage(1);
         } catch (err) {
           clearAllResult.style.display = 'block';
